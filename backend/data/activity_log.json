@@ -1,5 +1,299 @@
 [
   {
+    "id": "act-mul93d6c-959f04",
+    "timestamp": 1790600143476,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_6lrai5c_m timed out after inactivity",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul92vvu-2750f1",
+    "timestamp": 1790600121066,
+    "type": "QR_SCAN_SUCCESS",
+    "title": "QR Pass Re-Scanned",
+    "description": "Pass cir560 (Balaram Jena) verified again at gate. Total Scans: 2.",
+    "short_ref": "cir560",
+    "head_name": "Balaram Jena"
+  },
+  {
+    "id": "act-mul92vvp-77d747",
+    "timestamp": 1790600121061,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ Balaram Jena & family (4 persons) reached OR-KEN-SH01 in 01 min 42 sec.",
+    "short_ref": "cir560",
+    "head_name": "Balaram Jena",
+    "duration_seconds": 102
+  },
+  {
+    "id": "act-mul92upm-341584",
+    "timestamp": 1790600119546,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for Balaram Jena (cir912, 4 members) destined for OR-KEN-SH01",
+    "short_ref": "cir912",
+    "head_name": "Balaram Jena"
+  },
+  {
+    "id": "act-mul92psu-e8fd6f",
+    "timestamp": 1790600113182,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_633hkas_m arrived at /",
+    "sessionId": "sess_633hkas_mul92pry"
+  },
+  {
+    "id": "act-mul92ce8-942b62",
+    "timestamp": 1790600095809,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_6lrai5c_m arrived at /admin/dashboard",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul90orr-6218cc",
+    "timestamp": 1790600018535,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for Balaram Jena (cir560, 4 members) destined for OR-KEN-SH01",
+    "short_ref": "cir560",
+    "head_name": "Balaram Jena"
+  },
+  {
+    "id": "act-mul8oi1m-1d1b69",
+    "timestamp": 1790599449946,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_6lrai5c_m timed out after inactivity",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul8ms9v-d95081",
+    "timestamp": 1790599369891,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_6lrai5c_m timed out after inactivity",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul7ap9k-14e105",
+    "timestamp": 1790597126504,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul79eyd-f0642e",
+    "timestamp": 1790597066485,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul78g88-e2f098",
+    "timestamp": 1790597021480,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul784oi-bced82",
+    "timestamp": 1790597006514,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul77t35-72d229",
+    "timestamp": 1790596991489,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul77hj1-878f46",
+    "timestamp": 1790596976510,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul775xs-e7102b",
+    "timestamp": 1790596961488,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul76ud7-4bc1d3",
+    "timestamp": 1790596946491,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul76isp-76211b",
+    "timestamp": 1790596931498,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul76fpb-0266ef",
+    "timestamp": 1790596927487,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul76coc-46539d",
+    "timestamp": 1790596923564,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul76777-9c0104",
+    "timestamp": 1790596916467,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul75vmt-405ce3",
+    "timestamp": 1790596901478,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul75jys-7f2314",
+    "timestamp": 1790596886357,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul758e1-9838e6",
+    "timestamp": 1790596871353,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul74wt9-11338b",
+    "timestamp": 1790596856350,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul74vsk-f23981",
+    "timestamp": 1790596855028,
+    "type": "QR_SCAN_SUCCESS",
+    "title": "QR Pass Re-Scanned",
+    "description": "Pass 2e5f (Hi) verified again at gate. Total Scans: 2.",
+    "short_ref": "2e5f",
+    "head_name": "Hi"
+  },
+  {
+    "id": "act-mul74ld5-a3bbcf",
+    "timestamp": 1790596841513,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul749s3-00dd0b",
+    "timestamp": 1790596826499,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul73y7b-f43e95",
+    "timestamp": 1790596811495,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul73mmu-61b257",
+    "timestamp": 1790596796502,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul73b28-204691",
+    "timestamp": 1790596781504,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul735t1-9693c4",
+    "timestamp": 1790596774693,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul72zhk-eb418b",
+    "timestamp": 1790596766504,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul72pmz-6314f9",
+    "timestamp": 1790596753739,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_6lrai5c_m activated gate camera scanner",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
+    "id": "act-mul6z5bb-63ce50",
+    "timestamp": 1790596587431,
+    "type": "ADMIN_LOGIN",
+    "title": "Administrator Authenticated",
+    "description": "Emergency Coordinator logged into Admin Command Center from ::1",
+    "username": "admin"
+  },
+  {
+    "id": "act-mul6yz99-dde9bb",
+    "timestamp": 1790596579582,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_6lrai5c_m arrived at /",
+    "sessionId": "sess_6lrai5c_mul6yyx0"
+  },
+  {
     "id": "act-mul6x681-32dac5",
     "timestamp": 1790596495297,
     "type": "ADMIN_LOGIN",

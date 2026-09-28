@@ -30,6 +30,10 @@ import {
 } from "html5-qrcode";
 import { decodeQRPayload, type QRPayloadData } from "@/lib/qr/codec";
 import {
+  detectCircularCodeFromVideo,
+  detectCircularCodeFromFile,
+} from "@/lib/qr/circularCode";
+import {
   db,
   initializeDatabase,
   type Shelter,
@@ -444,6 +448,36 @@ export default function ScanPage() {
               }
             }
           }
+
+          // Check Circular QR Code if no square barcode detected
+          if (!isProcessingScanRef.current) {
+            const circularCode = detectCircularCodeFromVideo(videoEl);
+            if (circularCode && !isProcessingScanRef.current) {
+              const now = Date.now();
+              if (
+                lastProcessedCodeRef.current === circularCode &&
+                now - lastProcessedAtRef.current < 2500
+              ) {
+                // Ignore repeated scan within grace window
+              } else {
+                isProcessingScanRef.current = true;
+                isScanningActiveRef.current = false;
+                lastProcessedCodeRef.current = circularCode;
+                lastProcessedAtRef.current = now;
+
+                stopContinuousScan();
+                try {
+                  if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+                    html5QrCodeRef.current.pause(true);
+                  }
+                } catch {}
+
+                playScanBeep();
+                handleProcessCode(circularCode);
+                return;
+              }
+            }
+          }
         } catch {
           // Frame dropped or busy
         } finally {
@@ -697,6 +731,15 @@ export default function ScanPage() {
 
     setErrorMessage(null);
     try {
+      // 1. Check for Circular QR Pass
+      const circularResult = await detectCircularCodeFromFile(file);
+      if (circularResult) {
+        playScanBeep();
+        handleProcessCode(circularResult);
+        return;
+      }
+
+      // 2. Fall back to standard Html5Qrcode
       const scanner = new Html5Qrcode("qr-hidden-file-sink");
       const result = await scanner.scanFile(file, true);
       playScanBeep();

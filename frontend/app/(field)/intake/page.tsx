@@ -242,6 +242,11 @@ export default function IntakePage() {
       createdAt: authoritativeCreatedAt,
     });
 
+    try {
+      localStorage.setItem("ashraysetu_last_qr_payload", qrPayload);
+      localStorage.setItem("ashraysetu_last_qr_url", qrDataUrl);
+    } catch {}
+
     // Reset form inputs
     setHeadName("");
     setHamletName("");
@@ -623,13 +628,15 @@ export default function IntakePage() {
               </div>
             </div>
 
-            {/* Rendered QR Canvas */}
-            <div className="p-3 bg-white rounded-xl inline-block shadow-inner mx-auto">
-              <img
-                src={qrModalData.qrUrl}
-                alt="Shelter QR Pass"
-                className="w-56 h-56 mx-auto"
-              />
+            {/* Rendered Circular QR Pass */}
+            <div className="relative flex items-center justify-center py-2">
+              <div className="relative rounded-full p-1.5 bg-gradient-to-b from-slate-800/80 via-slate-900 to-slate-950 shadow-2xl shadow-sky-950/60">
+                <img
+                  src={qrModalData.qrUrl}
+                  alt="Circular Shelter QR Pass"
+                  className="w-60 h-60 mx-auto rounded-full drop-shadow-2xl select-none"
+                />
+              </div>
             </div>
 
             <div className="text-[11px] text-slate-400 leading-snug">
@@ -640,12 +647,21 @@ export default function IntakePage() {
               {qrModalData.payloadText}
             </div>
 
-            <button
-              onClick={() => setQrModalData(null)}
-              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold"
-            >
-              {t.closePass}
-            </button>
+            <div className="flex gap-2 pt-1">
+              <a
+                href={qrModalData.qrUrl}
+                download={`ShelterPass_${qrModalData.createdAt}.png`}
+                className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-sky-600/30"
+              >
+                <span>Download Pass</span>
+              </a>
+              <button
+                onClick={() => setQrModalData(null)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition"
+              >
+                {t.closePass}
+              </button>
+            </div>
           </div>
         </div>
       )}

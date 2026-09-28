@@ -995,14 +995,29 @@ app.post("/api/qr/create", (req, res) => {
  */
 app.post("/api/qr/scan", (req, res) => {
   try {
-    const {
+    let {
       short_ref,
       head_name,
       hamlet_name,
       shelter_id,
       total_members,
       qr_created_at: payloadCreatedAt,
+      qr_payload,
     } = req.body;
+
+    if (qr_payload && (!short_ref || !head_name)) {
+      const parts = String(qr_payload).trim().split("|");
+      if (parts.length >= 10) {
+        shelter_id = shelter_id || parts[1];
+        short_ref = short_ref || parts[2];
+        total_members = total_members || parseInt(parts[3], 10) || 1;
+        head_name = head_name || parts[10];
+        hamlet_name = hamlet_name || parts[11];
+        if (parts[12] && !payloadCreatedAt) {
+          payloadCreatedAt = parseInt(parts[12], 10);
+        }
+      }
+    }
 
     const serverNow = Date.now();
 

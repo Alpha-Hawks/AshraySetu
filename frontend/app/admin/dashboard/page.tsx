@@ -171,7 +171,6 @@ export default function AdminDashboardPage() {
   const [isConnectedSse, setIsConnectedSse] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<number>(Date.now());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -360,16 +359,6 @@ export default function AdminDashboardPage() {
               {isConnectedSse ? "REAL-TIME SSE CONNECTED" : "POLLING TELEMETRY"}
             </span>
           </div>
-
-          {/* Privacy Protocol Button */}
-          <button
-            onClick={() => setShowPrivacyModal(true)}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 hover:text-white text-xs font-medium transition flex items-center gap-1.5"
-            title="View Live Camera Privacy Guarantees"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
-            <span>Camera Privacy Protocol</span>
-          </button>
 
           {/* Refresh Snapshot Button */}
           <button
@@ -1128,67 +1117,6 @@ export default function AdminDashboardPage() {
               })}
             </div>
           )}
-        </div>
-      )}
-
-      {/* LIVE CAMERA PRIVACY & SECURITY PROTOCOL MODAL */}
-      {showPrivacyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2 text-white font-bold text-base">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                <span>Live Camera Privacy & Security Protocol</span>
-              </div>
-              <button
-                onClick={() => setShowPrivacyModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
-              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-                <span className="font-bold text-emerald-400 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4" />
-                  100% On-Device Client Processing
-                </span>
-                <p className="text-slate-400 text-[11px]">
-                  The QR scanner operates exclusively inside the user’s local browser sandbox using hardware-accelerated W3C BarcodeDetector API. No raw video feed, webcam frames, or photographic images are ever transmitted to the server or administrator.
-                </p>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-                <span className="font-bold text-sky-400 flex items-center gap-1.5">
-                  <Lock className="w-4 h-4" />
-                  Zero-Surveillance Architecture
-                </span>
-                <p className="text-slate-400 text-[11px]">
-                  The administrator only receives anonymous metadata telemetry (scanner active/idle state, token ID, scan timestamp). Video streams are completely inaccessible to the admin dashboard.
-                </p>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-                <span className="font-bold text-amber-400 flex items-center gap-1.5">
-                  <Info className="w-4 h-4" />
-                  Mutual WebRTC Consent Gate
-                </span>
-                <p className="text-slate-400 text-[11px]">
-                  If remote camera assistance is ever requested in future disaster phases, it strictly requires bilateral explicit user consent, conspicuous visual recording indicators, and immediate one-tap stop sharing controls. Hidden background camera streaming is technically forbidden.
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 text-right">
-              <button
-                onClick={() => setShowPrivacyModal(false)}
-                className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs transition"
-              >
-                Acknowledge & Close
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

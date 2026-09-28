@@ -109,16 +109,29 @@ export function decodeQRPayload(rawInput: string): QRPayloadData | null {
   }
 }
 
+import { generateCircularQRDataURL } from "./circularCode";
+
+export { generateCircularQRDataURL };
+
 /**
- * Generates an SVG or Data URL QR code from the encoded payload
+ * Generates the circular QR code Data URL from the encoded payload
  */
 export async function generateQRCodeDataURL(payload: string): Promise<string> {
+  try {
+    if (typeof document !== "undefined") {
+      const circularUrl = await generateCircularQRDataURL(payload, 380);
+      if (circularUrl) return circularUrl;
+    }
+  } catch (err) {
+    console.warn("Circular QR generation fallback:", err);
+  }
+
   return await QRCode.toDataURL(payload, {
     errorCorrectionLevel: "M",
     margin: 2,
     scale: 6,
     color: {
-      dark: "#0F172A", // Slate-900
+      dark: "#0F172A",
       light: "#FFFFFF",
     },
   });
