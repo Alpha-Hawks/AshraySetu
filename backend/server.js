@@ -713,3 +713,6 @@ app.listen(PORT, () => {
   console.log(`🏥 Regions: Coastal Odisha & Andhra Pradesh`);
   console.log(`=======================================================`);
 });
+
+export default app;
+
