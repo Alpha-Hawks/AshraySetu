@@ -377,14 +377,6 @@ export default function ScanPage() {
 
       const scanConfig = {
         fps: 15,
-        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          const minSide = Math.min(viewfinderWidth, viewfinderHeight);
-          const edge = Math.floor(minSide * 0.75);
-          return {
-            width: Math.max(180, edge),
-            height: Math.max(180, edge),
-          };
-        },
         aspectRatio: 1.0,
       };
 
@@ -426,6 +418,12 @@ export default function ScanPage() {
         }
       }
 
+      // Ensure any shaded region inserted by the library is removed to maintain a transparent viewfinder
+      const shadedRegion = document.getElementById("qr-shaded-region");
+      if (shadedRegion) {
+        shadedRegion.remove();
+      }
+
       setIsCameraActive(true);
       setIsCameraLoading(false);
 
@@ -439,6 +437,7 @@ export default function ScanPage() {
         videoEl.style.objectFit = "cover";
         videoEl.style.borderRadius = "1rem";
         videoEl.style.display = "block";
+        videoEl.style.backgroundColor = "transparent";
         if (videoEl.paused) {
           videoEl.play().catch(() => {});
         }

@@ -62,7 +62,7 @@ body {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background-color: #000000 !important;
+  background-color: transparent !important;
 }
 
 #qr-camera-viewport video {
@@ -73,11 +73,7 @@ body {
   object-fit: cover !important;
   border-radius: 1rem !important;
   display: block !important;
-}
-
-#qr-camera-viewport div {
-  width: 100% !important;
-  height: 100% !important;
+  background-color: transparent !important;
 }
 
 #qr-camera-viewport__scan_region {
@@ -86,12 +82,27 @@ body {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  background-color: transparent !important;
 }
 
 #qr-camera-viewport__scan_region video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
+  background-color: transparent !important;
+}
+
+/* Eliminate html5-qrcode shaded regions, border shaders, and white box overlays */
+#qr-shaded-region,
+#qr-camera-viewport #qr-shaded-region,
+#qr-camera-viewport svg,
+#qr-camera-viewport canvas[id="qr-canvas"],
+#qr-camera-viewport div[style*="background-color: rgb(255, 255, 255)"],
+#qr-camera-viewport div[style*="background-color: #ffffff"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 #qr-camera-viewport__header_message,
