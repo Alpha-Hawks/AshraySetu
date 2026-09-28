@@ -1,0 +1,134 @@
+[
+  {
+    "id": "AP-DIST-SRK",
+    "district_name": "Srikakulam",
+    "headquarters": "Srikakulam",
+    "coastal_length_km": 193,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Palasa", "Sompeta", "Kalingapatnam", "Gara", "Etcherla", "Ranastalam"],
+    "major_historical_cyclones": ["Titli (2018)", "Gulab (2021)"],
+    "deoc_helpline": "08942-240557 / 1077",
+    "designated_shelters": 48
+  },
+  {
+    "id": "AP-DIST-VZM",
+    "district_name": "Vizianagaram",
+    "headquarters": "Vizianagaram",
+    "coastal_length_km": 28,
+    "vulnerability_tier": "HIGH",
+    "key_coastal_mandals": ["Bhogapuram", "Pusapatirega"],
+    "major_historical_cyclones": ["Hudhud (2014)", "Titli (2018)"],
+    "deoc_helpline": "08922-236947 / 1077",
+    "designated_shelters": 14
+  },
+  {
+    "id": "AP-DIST-VSP",
+    "district_name": "Visakhapatnam",
+    "headquarters": "Visakhapatnam",
+    "coastal_length_km": 54,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Bheemunipatnam", "Visakhapatnam Urban", "Gajuwaka", "Pedagantyada"],
+    "major_historical_cyclones": ["Hudhud (2014)", "1990 Machilipatnam"],
+    "deoc_helpline": "0891-2560820 / 1077",
+    "designated_shelters": 36
+  },
+  {
+    "id": "AP-DIST-ANK",
+    "district_name": "Anakapalli",
+    "headquarters": "Anakapalli",
+    "coastal_length_km": 78,
+    "vulnerability_tier": "HIGH",
+    "key_coastal_mandals": ["Parawada", "Atchutapuram", "Rambilli", "S.Rayavaram", "Payakaraopeta"],
+    "major_historical_cyclones": ["Hudhud (2014)"],
+    "deoc_helpline": "08924-220033 / 1077",
+    "designated_shelters": 22
+  },
+  {
+    "id": "AP-DIST-KKD",
+    "district_name": "Kakinada",
+    "headquarters": "Kakinada",
+    "coastal_length_km": 115,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Thondangi", "U.Kothapalli", "Kakinada Rural", "Kakinada Urban", "Karapa", "Tallarevu"],
+    "major_historical_cyclones": ["Phethai (2018)", "1996 Kakinada Cyclone"],
+    "deoc_helpline": "0884-2365506 / 1077",
+    "designated_shelters": 52
+  },
+  {
+    "id": "AP-DIST-KNS",
+    "district_name": "Dr. B.R. Ambedkar Konaseema",
+    "headquarters": "Amalapuram",
+    "coastal_length_km": 92,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Katrenikona", "Uppalaguptam", "Allavaram", "Mamidikuduru", "Sakhinetipalli"],
+    "major_historical_cyclones": ["Phethai (2018)", "Michaung (2023)"],
+    "deoc_helpline": "08856-233208 / 1077",
+    "designated_shelters": 46
+  },
+  {
+    "id": "AP-DIST-WGD",
+    "district_name": "West Godavari",
+    "headquarters": "Bhimavaram",
+    "coastal_length_km": 42,
+    "vulnerability_tier": "HIGH",
+    "key_coastal_mandals": ["Narsapur", "Mogalthur"],
+    "major_historical_cyclones": ["1990 Machilipatnam", "Phethai (2018)"],
+    "deoc_helpline": "08816-224855 / 1077",
+    "designated_shelters": 24
+  },
+  {
+    "id": "AP-DIST-KRI",
+    "district_name": "Krishna",
+    "headquarters": "Machilipatnam",
+    "coastal_length_km": 111,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Machilipatnam", "Nagayalanka", "Koduru", "Kruthivennu", "Bantumilli"],
+    "major_historical_cyclones": ["Diviseema (1977)", "1990 Machilipatnam", "Michaung (2023)"],
+    "deoc_helpline": "08672-252572 / 1077",
+    "designated_shelters": 64
+  },
+  {
+    "id": "AP-DIST-BAP",
+    "district_name": "Bapatla",
+    "headquarters": "Bapatla",
+    "coastal_length_km": 88,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Nizampatnam", "Repalle", "Bapatla", "Karlapalem", "Vetapalem", "Chirala"],
+    "major_historical_cyclones": ["Diviseema (1977)", "Laila (2010)", "Michaung (2023)"],
+    "deoc_helpline": "08643-224445 / 1077",
+    "designated_shelters": 56
+  },
+  {
+    "id": "AP-DIST-PKM",
+    "district_name": "Prakasam",
+    "headquarters": "Ongole",
+    "coastal_length_km": 102,
+    "vulnerability_tier": "HIGH",
+    "key_coastal_mandals": ["Chinnaganjam", "Naguluppalapadu", "Kothapatnam", "Tangutur", "Singarayakonda"],
+    "major_historical_cyclones": ["Laila (2010)", "Michaung (2023)"],
+    "deoc_helpline": "08592-281400 / 1077",
+    "designated_shelters": 38
+  },
+  {
+    "id": "AP-DIST-NEL",
+    "district_name": "Sri Potti Sriramulu Nellore",
+    "headquarters": "Nellore",
+    "coastal_length_km": 169,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Kavali", "Allur", "Vidavalur", "Indukurpet", "Thotapalligudur", "Muthukur"],
+    "major_historical_cyclones": ["Nilam (2012)", "Michaung (2023)"],
+    "deoc_helpline": "0861-2331477 / 1077",
+    "designated_shelters": 58
+  },
+  {
+    "id": "AP-DIST-TRP",
+    "district_name": "Tirupati",
+    "headquarters": "Tirupati",
+    "coastal_length_km": 72,
+    "vulnerability_tier": "HIGH",
+    "key_coastal_mandals": ["Vakadu", "Kota", "Chillakur", "Tada", "Sullurpeta", "Doravarisatram"],
+    "major_historical_cyclones": ["Michaung (2023)", "Nilam (2012)"],
+    "deoc_helpline": "0877-2236007 / 1077",
+    "designated_shelters": 32
+  }
+]
