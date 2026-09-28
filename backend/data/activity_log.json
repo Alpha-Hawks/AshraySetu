@@ -1,5 +1,340 @@
 [
   {
+    "id": "act-mulbsgcg-3d6052",
+    "timestamp": 1790604673216,
+    "type": "QR_SCAN_SUCCESS",
+    "title": "QR Pass Re-Scanned",
+    "description": "Pass evac-mulbscgj (Pravat Nayak) verified again at gate. Total Scans: 2.",
+    "short_ref": "evac-mulbscgj",
+    "head_name": "Pravat Nayak"
+  },
+  {
+    "id": "act-mulbsesc-3a72d2",
+    "timestamp": 1790604671196,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ Pravat Nayak & family (5 persons) reached OD-KEN-RAJ-001 in 00 min 03 sec.",
+    "short_ref": "evac-mulbscgj",
+    "head_name": "Pravat Nayak",
+    "duration_seconds": 3
+  },
+  {
+    "id": "act-mulbscgi-0ed855",
+    "timestamp": 1790604668178,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for Pravat Nayak (evac-mulbscgj, 5 members) destined for OD-KEN-RAJ-001",
+    "short_ref": "evac-mulbscgj",
+    "head_name": "Pravat Nayak"
+  },
+  {
+    "id": "act-mulbsa9x-9360c5",
+    "timestamp": 1790604665349,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbs3j9-7bf83d",
+    "timestamp": 1790604656613,
+    "type": "QR_SCAN_SUCCESS",
+    "title": "QR Pass Re-Scanned",
+    "description": "Pass evac-mulbrzn5 (Pravat Nayak) verified again at gate. Total Scans: 2.",
+    "short_ref": "evac-mulbrzn5",
+    "head_name": "Pravat Nayak"
+  },
+  {
+    "id": "act-mulbs1z7-a3caca",
+    "timestamp": 1790604654595,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ Pravat Nayak & family (5 persons) reached OD-KEN-RAJ-001 in 00 min 03 sec.",
+    "short_ref": "evac-mulbrzn5",
+    "head_name": "Pravat Nayak",
+    "duration_seconds": 3
+  },
+  {
+    "id": "act-mulbrzn8-6c0a48",
+    "timestamp": 1790604651572,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for Pravat Nayak (evac-mulbrzn5, 5 members) destined for OD-KEN-RAJ-001",
+    "short_ref": "evac-mulbrzn5",
+    "head_name": "Pravat Nayak"
+  },
+  {
+    "id": "act-mulbrdd8-bc63ff",
+    "timestamp": 1790604622700,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_n38rzbe_m arrived at /scan",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbr25i-ad9ad1",
+    "timestamp": 1790604608167,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbqfnx-3e0e69",
+    "timestamp": 1790604579021,
+    "type": "QR_SCAN_SUCCESS",
+    "title": "QR Pass Re-Scanned",
+    "description": "Pass evac-mulbnh1i (Pravat Nayak) verified again at gate. Total Scans: 3.",
+    "short_ref": "evac-mulbnh1i",
+    "head_name": "Pravat Nayak"
+  },
+  {
+    "id": "act-mulbqdbz-5548e5",
+    "timestamp": 1790604575999,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for Pravat Nayak (evac-mulbqdbs, 5 members) destined for OD-KEN-RAJ-001",
+    "short_ref": "evac-mulbqdbs",
+    "head_name": "Pravat Nayak"
+  },
+  {
+    "id": "act-mulbprtv-d12646",
+    "timestamp": 1790604548131,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbohhu-22433a",
+    "timestamp": 1790604488082,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbnkxt-410f9e",
+    "timestamp": 1790604445889,
+    "type": "QR_SCAN_SUCCESS",
+    "title": "QR Pass Re-Scanned",
+    "description": "Pass evac-mulbnh1i (Pravat Nayak) verified again at gate. Total Scans: 2.",
+    "short_ref": "evac-mulbnh1i",
+    "head_name": "Pravat Nayak"
+  },
+  {
+    "id": "act-mulbnjds-0bbb32",
+    "timestamp": 1790604443872,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ Pravat Nayak & family (5 persons) reached OD-KEN-RAJ-001 in 00 min 03 sec.",
+    "short_ref": "evac-mulbnh1i",
+    "head_name": "Pravat Nayak",
+    "duration_seconds": 3
+  },
+  {
+    "id": "act-mulbnh1n-9cf839",
+    "timestamp": 1790604440843,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for Pravat Nayak (evac-mulbnh1i, 5 members) destined for OD-KEN-RAJ-001",
+    "short_ref": "evac-mulbnh1i",
+    "head_name": "Pravat Nayak"
+  },
+  {
+    "id": "act-mulbn75h-3ab389",
+    "timestamp": 1790604428021,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulblwtu-c1f23c",
+    "timestamp": 1790604367987,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbkmi1-22165a",
+    "timestamp": 1790604307946,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbjc62-0c7f26",
+    "timestamp": 1790604247898,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbi1tq-3d4a3f",
+    "timestamp": 1790604187838,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbh2z8-01d909",
+    "timestamp": 1790604142676,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_n38rzbe_m arrived at /scan",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbfh0i-cfc6ef",
+    "timestamp": 1790604067554,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbf3rg-fdaf25",
+    "timestamp": 1790604050380,
+    "type": "QR_SCAN_SUCCESS",
+    "title": "QR Pass Re-Scanned",
+    "description": "Pass verify-mulbf1ff (Ramesh Jena) verified again at gate. Total Scans: 2.",
+    "short_ref": "verify-mulbf1ff",
+    "head_name": "Ramesh Jena"
+  },
+  {
+    "id": "act-mulbf2zh-727d0c",
+    "timestamp": 1790604049373,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ Ramesh Jena & family (4 persons) reached OD-KEN-RAJ-001 in 00 min 02 sec.",
+    "short_ref": "verify-mulbf1ff",
+    "head_name": "Ramesh Jena",
+    "duration_seconds": 2
+  },
+  {
+    "id": "act-mulbf1fo-3c620b",
+    "timestamp": 1790604047364,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for Ramesh Jena (verify-mulbf1ff, 4 members) destined for OD-KEN-RAJ-001",
+    "short_ref": "verify-mulbf1ff",
+    "head_name": "Ramesh Jena"
+  },
+  {
+    "id": "act-mulbe6od-ed59a0",
+    "timestamp": 1790604007502,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbcwca-cb32ea",
+    "timestamp": 1790603947450,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulbabnk-100c21",
+    "timestamp": 1790603827328,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulb91a9-c8a75e",
+    "timestamp": 1790603767233,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulb7qxh-f5676a",
+    "timestamp": 1790603707157,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulb6gm4-0a91fc",
+    "timestamp": 1790603647132,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulb56a1-d6f64b",
+    "timestamp": 1790603587082,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulb43nl-8f1ff2",
+    "timestamp": 1790603537025,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulb1by3-0cc029",
+    "timestamp": 1790603407803,
+    "type": "QR_SCAN_SUCCESS",
+    "title": "QR Pass Re-Scanned",
+    "description": "Pass 2e5f (Hi) verified again at gate. Total Scans: 3.",
+    "short_ref": "2e5f",
+    "head_name": "Hi"
+  },
+  {
+    "id": "act-mulb0vdr-3a8c98",
+    "timestamp": 1790603386335,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for hi (0fd1, 4 members) destined for AP-SHELTER-ANK-009",
+    "short_ref": "0fd1",
+    "head_name": "hi"
+  },
+  {
+    "id": "act-mulayc4n-f16883",
+    "timestamp": 1790603268071,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ Dinesh & family (4 persons) reached AP-SHELTER-ANK-009 in 50 min 34 sec.",
+    "short_ref": "4c6f",
+    "head_name": "Dinesh",
+    "duration_seconds": 3034
+  },
+  {
+    "id": "act-mulaxgn7-e86899",
+    "timestamp": 1790603227267,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for Dinesh (3f23, 4 members) destined for AP-SHELTER-ANK-009",
+    "short_ref": "3f23",
+    "head_name": "Dinesh"
+  },
+  {
+    "id": "act-mulaw5vr-c38f6b",
+    "timestamp": 1790603166663,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
     "id": "act-mulauvjt-07e54e",
     "timestamp": 1790603106617,
     "type": "USER_INACTIVE",

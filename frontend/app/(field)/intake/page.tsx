@@ -622,9 +622,14 @@ export default function IntakePage() {
               <p className="text-xs text-emerald-400 font-semibold mt-0.5">
                 {qrModalData.familySummary}
               </p>
-              <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950 border border-sky-500/40 text-sky-300 text-xs font-mono font-bold shadow-inner">
-                <Clock className="w-3.5 h-3.5 text-sky-400" />
-                <span>QR Created At: {formatClockTime(qrModalData.createdAt)}</span>
+              <div className="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-950 border border-sky-500/50 text-xs font-mono shadow-inner">
+                <Clock className="w-4 h-4 text-sky-400 shrink-0" />
+                <span className="text-slate-300 font-medium">
+                  QR Created At:{" "}
+                  <strong className="text-sky-300 font-black tracking-wide">
+                    {formatClockTime(qrModalData.createdAt)}
+                  </strong>
+                </span>
               </div>
             </div>
 

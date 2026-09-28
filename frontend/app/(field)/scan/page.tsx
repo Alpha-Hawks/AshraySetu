@@ -188,10 +188,14 @@ export default function ScanPage() {
   const [detectedTimeZone, setDetectedTimeZone] = useState<string>("Asia/Kolkata");
   const [timeZoneShort, setTimeZoneShort] = useState<string>("IST");
 
-  // Accurate Scan Time Lock Tracking (Clock stops when QR is scanned!)
+  // Accurate Scan Time Lock Tracking (Clock & Timer stop when QR is scanned!)
   const [isClockRunning, setIsClockRunning] = useState<boolean>(true);
   const [currentClockDisplay, setCurrentClockDisplay] = useState<string>("");
   const [scannedAtTimestamp, setScannedAtTimestamp] = useState<number | null>(null);
+
+  // Active Running Elapsed Transit Timer (Runs before scan, freezes immediately at scan)
+  const [elapsedTimerSeconds, setElapsedTimerSeconds] = useState<number>(0);
+  const [sessionStartTime] = useState<number>(() => Date.now());
 
   // Camera State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
@@ -216,7 +220,7 @@ export default function ScanPage() {
   const lastProcessedCodeRef = useRef<string | null>(null);
   const lastProcessedAtRef = useRef<number>(0);
 
-  // Auto-Detect System Timezone and Restore Frozen Timer on Refresh
+  // Auto-Detect System Timezone and Authoritatively Hydrate Frozen Record from Backend on Refresh (Rule 3 & 8)
   useEffect(() => {
     try {
       const tz =
@@ -235,23 +239,154 @@ export default function ScanPage() {
       setTimeZoneShort("IST");
     }
 
-    // Rule 3 & 8: If page is refreshed after scan, restore the frozen audit and do NOT restart timer
+    // Rule 3 & 8: If page is refreshed after scan, retrieve the authoritative stored record from backend
+    // and display the SAME frozen duration. Never restart timer after a successful scan.
+    async function restoreFromBackendOrStorage() {
+      try {
+        let savedAudit: ScanAuditRecord | null = null;
+        let savedResult: QRPayloadData | null = null;
+        let lastShortRef: string | null = null;
+
+        const auditStr =
+          sessionStorage.getItem("ashraysetu_last_scan_audit") ||
+          localStorage.getItem("ashraysetu_last_scan_audit");
+        if (auditStr) {
+          try {
+            savedAudit = JSON.parse(auditStr);
+          } catch {}
+        }
+
+        const resultStr =
+          sessionStorage.getItem("ashraysetu_last_scanned_result") ||
+          localStorage.getItem("ashraysetu_last_scanned_result");
+        if (resultStr) {
+          try {
+            savedResult = JSON.parse(resultStr);
+          } catch {}
+        }
+
+        lastShortRef =
+          sessionStorage.getItem("ashraysetu_last_scanned_ref") ||
+          localStorage.getItem("ashraysetu_last_scanned_ref") ||
+          savedAudit?.short_ref ||
+          savedResult?.shortRef ||
+          null;
+
+        if (lastShortRef || savedAudit) {
+          let backendRecord: any = null;
+          const refToFetch = lastShortRef || "latest";
+
+          try {
+            const res = await fetch(`/api/qr/status/${encodeURIComponent(refToFetch)}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.found && data.record && data.record.qr_scanned_at) {
+                backendRecord = data.record;
+              }
+            }
+          } catch (e) {
+            console.warn("Backend status lookup offline or failed, using local storage", e);
+          }
+
+          const record = backendRecord || savedAudit;
+          if (record && record.qr_scanned_at) {
+            const durationSec = Number(
+              record.arrival_duration_seconds != null
+                ? record.arrival_duration_seconds
+                : Math.max(
+                    0,
+                    Math.floor(
+                      (Number(record.qr_scanned_at) - Number(record.qr_created_at)) / 1000
+                    )
+                  )
+            );
+
+            const audit: ScanAuditRecord = {
+              short_ref: record.short_ref,
+              qr_created_at: Number(record.qr_created_at),
+              qr_scanned_at: Number(record.qr_scanned_at),
+              arrival_duration_seconds: durationSec,
+              status: record.status || "REACHED_SHELTER",
+              duplicate: (record.scan_count || 1) > 1,
+              scan_count: record.scan_count || 1,
+            };
+
+            setScanAuditRecord(audit);
+            setScannedAtTimestamp(audit.qr_scanned_at);
+            setElapsedTimerSeconds(durationSec);
+            setIsClockRunning(false); // Permanently freeze timer on refresh!
+
+            // Restore scannedResult so the dossier and 4 arrival cards render immediately
+            const populatedResult: QRPayloadData = savedResult || {
+              version: "V1",
+              shelterId: record.shelter_id || "OD-KEN-RAJ-001",
+              shortRef: record.short_ref,
+              totalMembers: record.total_members || 1,
+              maleCount: Math.ceil((record.total_members || 1) / 2),
+              femaleCount: Math.floor((record.total_members || 1) / 2),
+              infantCount: 0,
+              elderlyCount: 0,
+              livestockCount: 0,
+              triageCode: "P3_STD",
+              headName: record.head_name || "Evacuee Head",
+              hamletName: record.hamlet_name || "Coastal Sector",
+              createdAt: audit.qr_created_at,
+            };
+            setScannedResult(populatedResult);
+
+            const frozenString = new Date(audit.qr_scanned_at).toLocaleString("en-IN", {
+              timeZone: detectedTimeZone,
+              weekday: "short",
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: true,
+            });
+            setCurrentClockDisplay(`${frozenString} (${timeZoneShort})`);
+
+            // Try to match household in Dexie
+            try {
+              const allHouseholds = await db.households.toArray();
+              const matched = allHouseholds.find(
+                (h) =>
+                  h.id.startsWith(populatedResult.shortRef) ||
+                  h.head_name.toLowerCase().trim() ===
+                    (populatedResult.headName || "").toLowerCase().trim()
+              );
+              setMatchedHousehold(matched || null);
+            } catch {}
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to restore scan record on refresh:", err);
+      }
+    }
+
+    restoreFromBackendOrStorage();
+  }, [detectedTimeZone, timeZoneShort]);
+
+  // Synchronize Live Gate Clock & Running Elapsed Arrival Timer
+  // (Runs before scan; stops & freezes immediately when QR pass is scanned!)
+  useEffect(() => {
+    if (!isClockRunning) return; // Frozen! Do not run after scan!
+
+    // Check if an evacuee pass was recently created in this browser session
+    let transitStart = sessionStartTime;
     try {
-      const savedAuditStr = sessionStorage.getItem("ashraysetu_last_scan_audit");
-      if (savedAuditStr) {
-        const savedAudit: ScanAuditRecord = JSON.parse(savedAuditStr);
-        setScanAuditRecord(savedAudit);
-        setScannedAtTimestamp(savedAudit.qr_scanned_at);
-        setIsClockRunning(false); // Timer remains frozen!
+      const lastPayload = localStorage.getItem("ashraysetu_last_qr_payload");
+      if (lastPayload && lastPayload.includes("|")) {
+        const parts = lastPayload.split("|");
+        const ts = parts[12] ? parseInt(parts[12], 10) : NaN;
+        if (!isNaN(ts) && ts > 0 && ts <= Date.now()) {
+          transitStart = ts;
+        }
       }
     } catch {}
-  }, []);
 
-  // Synchronize Live Clock (Stops when QR pass is scanned!)
-  useEffect(() => {
-    if (!isClockRunning) return; // Do not run clock after scan - stop time for accurate scan details!
-
-    const updateClock = () => {
+    const updateClockAndTimer = () => {
       const now = new Date();
       const formatted = now.toLocaleString("en-IN", {
         timeZone: detectedTimeZone,
@@ -265,12 +400,16 @@ export default function ScanPage() {
         hour12: true,
       });
       setCurrentClockDisplay(`${formatted} (${timeZoneShort})`);
+
+      // Update elapsed duration ticking before scan
+      const elapsed = Math.max(0, Math.floor((now.getTime() - transitStart) / 1000));
+      setElapsedTimerSeconds(elapsed);
     };
 
-    updateClock();
-    const timer = setInterval(updateClock, 1000);
+    updateClockAndTimer();
+    const timer = setInterval(updateClockAndTimer, 1000);
     return () => clearInterval(timer);
-  }, [isClockRunning, detectedTimeZone, timeZoneShort]);
+  }, [isClockRunning, detectedTimeZone, timeZoneShort, sessionStartTime]);
 
   // Load Initial Data
   const refreshData = async () => {
@@ -854,9 +993,15 @@ export default function ScanPage() {
 
     setScanAuditRecord(audit);
     setScannedAtTimestamp(authoritativeScannedAt);
+    setElapsedTimerSeconds(arrivalSeconds);
 
     try {
       sessionStorage.setItem("ashraysetu_last_scan_audit", JSON.stringify(audit));
+      localStorage.setItem("ashraysetu_last_scan_audit", JSON.stringify(audit));
+      sessionStorage.setItem("ashraysetu_last_scanned_result", JSON.stringify(decoded));
+      localStorage.setItem("ashraysetu_last_scanned_result", JSON.stringify(decoded));
+      sessionStorage.setItem("ashraysetu_last_scanned_ref", decoded.shortRef);
+      localStorage.setItem("ashraysetu_last_scanned_ref", decoded.shortRef);
     } catch {}
 
     // Freeze display clock at this exact authoritative second
@@ -943,8 +1088,14 @@ export default function ScanPage() {
     setIsAdmitted(false);
     setScannedAtTimestamp(null);
     setScanAuditRecord(null);
+    setElapsedTimerSeconds(0);
     try {
       sessionStorage.removeItem("ashraysetu_last_scan_audit");
+      localStorage.removeItem("ashraysetu_last_scan_audit");
+      sessionStorage.removeItem("ashraysetu_last_scanned_result");
+      localStorage.removeItem("ashraysetu_last_scanned_result");
+      sessionStorage.removeItem("ashraysetu_last_scanned_ref");
+      localStorage.removeItem("ashraysetu_last_scanned_ref");
     } catch {}
     setIsClockRunning(true); // RESUME LIVE CLOCK!
 
@@ -1181,41 +1332,62 @@ export default function ScanPage() {
           </div>
         </div>
 
-        {/* Dynamic System Timezone & Accurate Scan Time Lock Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-          <div className="flex items-center gap-2 text-slate-300">
-            {isClockRunning ? (
-              <Clock className="w-4 h-4 text-emerald-400 animate-pulse shrink-0" />
-            ) : (
-              <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-            )}
-            <span className="font-semibold text-slate-400">
-              {isClockRunning
-                ? "Live Device Time:"
-                : "Scan Time (Locked & Stopped):"}
-            </span>
-            <span
-              className={`font-mono font-bold ${
-                isClockRunning ? "text-emerald-300" : "text-amber-300"
-              }`}
-            >
-              {currentClockDisplay || "Detecting time..."}
-            </span>
+        {/* Dynamic System Timezone & Accurate Scan Time Lock Bar with Live/Frozen Arrival Timer */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs shadow-md">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 text-slate-300">
+              {isClockRunning ? (
+                <Clock className="w-4 h-4 text-emerald-400 animate-pulse shrink-0" />
+              ) : (
+                <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+              )}
+              <span className="font-semibold text-slate-400">
+                {isClockRunning
+                  ? "Live Shelter Gate Clock:"
+                  : "Scan Time (Locked & Frozen):"}
+              </span>
+              <span
+                className={`font-mono font-bold ${
+                  isClockRunning ? "text-emerald-300" : "text-amber-300"
+                }`}
+              >
+                {currentClockDisplay || "Detecting time..."}
+              </span>
+            </div>
+
+            {/* LIVE / FROZEN ARRIVAL DURATION TIMER */}
+            <div className="flex items-center gap-2 pl-3 border-l border-slate-800">
+              <span className="font-semibold text-slate-400">
+                {isClockRunning ? "Transit Timer:" : "Time Taken to Reach:"}
+              </span>
+              <span
+                className={`font-mono font-extrabold text-xs px-2.5 py-0.5 rounded-lg border ${
+                  isClockRunning
+                    ? "bg-sky-950/80 text-sky-300 border-sky-500/40 animate-pulse"
+                    : "bg-emerald-950/90 text-emerald-300 border-emerald-500/40"
+                }`}
+              >
+                {scanAuditRecord
+                  ? formatDuration(scanAuditRecord.arrival_duration_seconds)
+                  : formatDuration(elapsedTimerSeconds)}
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {isClockRunning ? (
-              <span className="flex items-center gap-1 text-[10px] font-mono bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded text-emerald-300 font-bold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                LIVE CLOCK
+              <span className="flex items-center gap-1.5 text-[10px] font-mono bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-full text-emerald-300 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                TIMER RUNNING
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-[10px] font-mono bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 rounded text-amber-300 font-bold">
-                🔒 TIME STOPPED AT SCAN
+              <span className="flex items-center gap-1.5 text-[10px] font-mono bg-amber-950/90 border border-amber-500/50 px-2.5 py-1 rounded-full text-amber-300 font-bold">
+                <Lock className="w-3 h-3 text-amber-400" />
+                TIMER FROZEN AT SCAN
               </span>
             )}
-            <span className="text-[10px] font-mono bg-slate-900 px-2 py-0.5 rounded text-sky-400 border border-slate-800 uppercase">
-              {detectedTimeZone}
+            <span className="text-[10px] font-mono bg-slate-900 px-2 py-0.5 rounded text-sky-400 border border-slate-800 uppercase font-semibold">
+              {timeZoneShort}
             </span>
           </div>
         </div>

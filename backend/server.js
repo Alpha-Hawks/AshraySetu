@@ -1025,12 +1025,18 @@ app.post("/api/qr/scan", (req, res) => {
       return res.status(400).json({ error: "Missing required short_ref or head_name" });
     }
 
-    // Lookup existing record by short_ref or matching head_name
-    let record = qrScans.find(
-      (r) =>
-        (short_ref && r.short_ref === short_ref) ||
-        (head_name && r.head_name.toLowerCase().trim() === head_name.toLowerCase().trim())
-    );
+    // Lookup existing record: prioritize short_ref as the primary pass identifier
+    let record = null;
+    if (short_ref) {
+      const cleanRef = String(short_ref).trim().toLowerCase();
+      record = qrScans.find((r) => r.short_ref && r.short_ref.toLowerCase() === cleanRef);
+    }
+    if (!record && head_name) {
+      const cleanHead = String(head_name).trim().toLowerCase();
+      record = qrScans.slice().reverse().find(
+        (r) => r.head_name && r.head_name.toLowerCase().trim() === cleanHead
+      );
+    }
 
     // RULE 9: PREVENT DUPLICATE SCANS
     // If the record exists AND already has qr_scanned_at, do NOT overwrite it!
@@ -1140,11 +1146,27 @@ app.post("/api/qr/scan", (req, res) => {
 });
 
 /**
- * Get QR Scan / Evacuee Arrival Status by short_ref
+ * Get QR Scan / Evacuee Arrival Status by short_ref (or 'latest')
  */
 app.get("/api/qr/status/:short_ref", (req, res) => {
   const { short_ref } = req.params;
-  const record = qrScans.find((r) => r.short_ref === short_ref);
+  const target = String(short_ref || "").trim().toLowerCase();
+
+  let record = null;
+  if (target === "latest") {
+    // Return the most recent scanned evacuation pass
+    record =
+      qrScans.slice().reverse().find((r) => r.qr_scanned_at) ||
+      qrScans[qrScans.length - 1];
+  } else {
+    record = qrScans.find(
+      (r) =>
+        (r.short_ref && r.short_ref.toLowerCase() === target) ||
+        (r.id && r.id.toLowerCase() === target) ||
+        (r.head_name && r.head_name.toLowerCase().trim() === target)
+    );
+  }
+
   if (record) {
     res.json({ found: true, record });
   } else {
