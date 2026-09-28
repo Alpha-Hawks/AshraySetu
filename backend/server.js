@@ -16,6 +16,14 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Support Vercel multi-service routing (/api/backend/* -> /api/*)
+app.use((req, res, next) => {
+  if (req.url.startsWith("/api/backend")) {
+    req.url = req.url.replace(/^\/api\/backend/, "/api") || "/";
+  }
+  next();
+});
+
 // Load Andhra Pradesh datasets
 const apCyclonesPath = path.join(__dirname, "data", "ap_cyclones.json");
 const apDistrictsPath = path.join(__dirname, "data", "ap_districts.json");
