@@ -1,5 +1,121 @@
 [
   {
+    "id": "act-mulauvjt-07e54e",
+    "timestamp": 1790603106617,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulatl84-c236c9",
+    "timestamp": 1790603046580,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulasavf-63044f",
+    "timestamp": 1790602986507,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mular0jn-c5b09e",
+    "timestamp": 1790602926467,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulapq6t-4ccd50",
+    "timestamp": 1790602866389,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulaofuw-821481",
+    "timestamp": 1790602806344,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulan5j1-09dee2",
+    "timestamp": 1790602746302,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n38rzbe_m timed out after inactivity",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mulajs8r-766368",
+    "timestamp": 1790602589116,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_n38rzbe_m arrived at /",
+    "sessionId": "sess_n38rzbe_mulajs1l"
+  },
+  {
+    "id": "act-mul9xsyp-ed8eeb",
+    "timestamp": 1790601563617,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ d shiva & family (4 persons) reached AP-SHELTER-ANK-009 in 07 min 35 sec.",
+    "short_ref": "4389",
+    "head_name": "d shiva",
+    "duration_seconds": 455
+  },
+  {
+    "id": "act-mul9wo7e-ba0af4",
+    "timestamp": 1790601510794,
+    "type": "QR_SCANNER_OPENED",
+    "title": "QR Scanner Activated",
+    "description": "Session sess_633hkas_m activated gate camera scanner",
+    "sessionId": "sess_633hkas_mul92pry"
+  },
+  {
+    "id": "act-mul9w6ky-07738a",
+    "timestamp": 1790601487955,
+    "type": "QR_SCAN_SUCCESS",
+    "title": "QR Pass Re-Scanned",
+    "description": "Pass 7343 (G Dinesh) verified again at gate. Total Scans: 8.",
+    "short_ref": "7343",
+    "head_name": "G Dinesh"
+  },
+  {
+    "id": "act-mul9v3ar-571a51",
+    "timestamp": 1790601437044,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_633hkas_m timed out after inactivity",
+    "sessionId": "sess_633hkas_mul92pry"
+  },
+  {
+    "id": "act-mul9sk94-66a1aa",
+    "timestamp": 1790601319048,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_633hkas_m timed out after inactivity",
+    "sessionId": "sess_633hkas_mul92pry"
+  },
+  {
+    "id": "act-mul95ak8-438045",
+    "timestamp": 1790600233400,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for Dinesh (4c6f, 4 members) destined for AP-SHELTER-ANK-009",
+    "short_ref": "4c6f",
+    "head_name": "Dinesh"
+  },
+  {
     "id": "act-mul93d6c-959f04",
     "timestamp": 1790600143476,
     "type": "USER_INACTIVE",

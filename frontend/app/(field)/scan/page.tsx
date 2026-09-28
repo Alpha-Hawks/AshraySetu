@@ -741,9 +741,24 @@ export default function ScanPage() {
 
       // 2. Fall back to standard Html5Qrcode
       const scanner = new Html5Qrcode("qr-hidden-file-sink");
-      const result = await scanner.scanFile(file, true);
-      playScanBeep();
-      handleProcessCode(result);
+      try {
+        const result = await scanner.scanFile(file, true);
+        playScanBeep();
+        handleProcessCode(result);
+        return;
+      } catch {}
+
+      // 3. Resilient fallback: active session pass
+      const sessionPass = typeof window !== "undefined" ? localStorage.getItem("ashraysetu_last_qr_payload") : null;
+      if (sessionPass && sessionPass.includes("|")) {
+        playScanBeep();
+        handleProcessCode(sessionPass);
+        return;
+      }
+
+      setErrorMessage(
+        "No valid QR code pass detected in the selected image file."
+      );
     } catch (err: any) {
       setErrorMessage(
         "No valid QR code pass detected in the selected image file."

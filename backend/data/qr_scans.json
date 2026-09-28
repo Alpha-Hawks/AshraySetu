@@ -44,11 +44,11 @@
     "qr_scanned_at": 1790592912515,
     "arrival_duration_seconds": 21,
     "status": "REACHED_SHELTER",
-    "scan_count": 7,
+    "scan_count": 8,
     "created_at": 1790592891061,
     "updated_at": 1790592912515,
     "first_scanned_at": 1790592912515,
-    "last_scanned_at": 1790595338960
+    "last_scanned_at": 1790601487954
   },
   {
     "id": "722d6b22-b962-401c-b869-ed8f7fc48200",
@@ -115,5 +115,37 @@
     "scan_count": 0,
     "created_at": 1790600119546,
     "updated_at": 1790600119546
+  },
+  {
+    "id": "4b415796-2741-4169-b47a-25368cba7cf8",
+    "short_ref": "4c6f",
+    "head_name": "Dinesh",
+    "hamlet_name": "tirupati",
+    "shelter_id": "AP-SHELTER-ANK-009",
+    "total_members": 4,
+    "qr_created_at": 1790600233400,
+    "qr_scanned_at": null,
+    "arrival_duration_seconds": null,
+    "status": "ISSUED",
+    "scan_count": 0,
+    "created_at": 1790600233400,
+    "updated_at": 1790600233400
+  },
+  {
+    "id": "97e84b0d-e3fb-46d6-9f70-6fa1a59fdfec",
+    "short_ref": "4389",
+    "head_name": "d shiva",
+    "hamlet_name": "vishkapatnam",
+    "shelter_id": "AP-SHELTER-ANK-009",
+    "total_members": 4,
+    "qr_created_at": 1790601108617,
+    "qr_scanned_at": 1790601563617,
+    "arrival_duration_seconds": 455,
+    "status": "REACHED_SHELTER",
+    "scan_count": 1,
+    "first_scanned_at": 1790601563617,
+    "last_scanned_at": 1790601563617,
+    "created_at": 1790601108617,
+    "updated_at": 1790601563617
   }
 ]
