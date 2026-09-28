@@ -659,7 +659,7 @@ export async function initializeDatabase() {
         child_under_five_count: 1,
         elderly_above_sixty_count: 0,
         livestock_count: 2,
-        registered_at: Date.now() - 3600000 * 3,
+        registered_at: Date.now() - 25 * 60 * 1000,
         sync_status: "SYNCED",
       },
       {
@@ -674,7 +674,7 @@ export async function initializeDatabase() {
         child_under_five_count: 0,
         elderly_above_sixty_count: 1,
         livestock_count: 4,
-        registered_at: Date.now() - 3600000 * 2,
+        registered_at: Date.now() - 40 * 60 * 1000,
         sync_status: "SYNCED",
       },
       {
@@ -689,7 +689,7 @@ export async function initializeDatabase() {
         child_under_five_count: 1,
         elderly_above_sixty_count: 0,
         livestock_count: 1,
-        registered_at: Date.now() - 3600000 * 1,
+        registered_at: Date.now() - 15 * 60 * 1000,
         sync_status: "SYNCED",
       },
       {
@@ -704,7 +704,7 @@ export async function initializeDatabase() {
         child_under_five_count: 0,
         elderly_above_sixty_count: 1,
         livestock_count: 0,
-        registered_at: Date.now() - 3600000 * 4,
+        registered_at: Date.now() - 50 * 60 * 1000,
         sync_status: "SYNCED",
       },
     ];

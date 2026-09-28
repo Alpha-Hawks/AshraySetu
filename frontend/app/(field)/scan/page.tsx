@@ -21,11 +21,10 @@ import {
   Upload,
   Undo2,
   AlertCircle,
-  ArrowUpRight,
-  Layers,
   Sparkles,
+  Video,
 } from "lucide-react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, type CameraDevice } from "html5-qrcode";
 import { decodeQRPayload, type QRPayloadData } from "@/lib/qr/codec";
 import {
   db,
@@ -36,6 +35,59 @@ import {
   type ShelterAdmission,
 } from "@/lib/db/dexie";
 import { translations, type Language } from "@/lib/locales/translations";
+
+/**
+ * Format any timestamp or date into Indian Standard Time (IST)
+ * TimeZone: Asia/Kolkata (UTC+05:30)
+ */
+function formatToIST(
+  dateVal: number | string | Date | undefined | null,
+  includeSeconds = true
+): string {
+  if (!dateVal) return "N/A";
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "Invalid Date";
+    return (
+      d.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        ...(includeSeconds ? { second: "2-digit" } : {}),
+        hour12: true,
+      }) + " IST"
+    );
+  } catch {
+    return String(dateVal);
+  }
+}
+
+/**
+ * Format time only in Indian Standard Time (IST)
+ */
+function formatToISTTimeOnly(
+  dateVal: number | string | Date | undefined | null
+): string {
+  if (!dateVal) return "N/A";
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "Invalid Time";
+    return (
+      d.toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }) + " IST"
+    );
+  } catch {
+    return String(dateVal);
+  }
+}
 
 export default function ScanPage() {
   const [lang, setLang] = useState<Language>("en");
@@ -50,20 +102,48 @@ export default function ScanPage() {
   const [isAdmitted, setIsAdmitted] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"scanner" | "muster">("scanner");
 
+  // Real-time IST Clock State
+  const [currentISTClock, setCurrentISTClock] = useState<string>("");
+
   // Camera State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
-  const [cameraFacingMode, setCameraFacingMode] = useState<"environment" | "user">("environment");
   const [isCameraLoading, setIsCameraLoading] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [availableCameras, setAvailableCameras] = useState<CameraDevice[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+  const [activeCameraLabel, setActiveCameraLabel] = useState<string>("");
   const [torchOn, setTorchOn] = useState<boolean>(false);
   const [hasTorch, setHasTorch] = useState<boolean>(false);
 
-  // Admitted Muster Roll state
+  // Admitted Muster Roll State
   const [admissions, setAdmissions] = useState<ShelterAdmission[]>([]);
   const [searchMuster, setSearchMuster] = useState<string>("");
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Synchronize Live Clock in Indian Standard Time (IST)
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      const istString = now.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+      setCurrentISTClock(`${istString} (IST • UTC+05:30)`);
+    };
+
+    updateClock();
+    const timer = setInterval(updateClock, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Load Initial Data
   const refreshData = async () => {
@@ -85,13 +165,32 @@ export default function ScanPage() {
         .sortBy("admitted_at");
       setAdmissions(records);
     } catch {
-      // In case Dexie version upgrade in progress
       setAdmissions([]);
+    }
+  };
+
+  // Discover Available Cameras
+  const detectCameras = async () => {
+    try {
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length > 0) {
+        setAvailableCameras(devices);
+        if (!selectedCameraId) {
+          // If on mobile/tablet, prefer rear/environment camera
+          const rear = devices.find((d) =>
+            /back|rear|environment|world/i.test(d.label)
+          );
+          setSelectedCameraId(rear ? rear.id : devices[0].id);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not pre-enumerate cameras", e);
     }
   };
 
   useEffect(() => {
     refreshData();
+    detectCameras();
 
     const handleLang = () => {
       const savedLang = localStorage.getItem("ashraysetu_lang") as Language;
@@ -114,62 +213,156 @@ export default function ScanPage() {
   // Sound and Haptic Feedback
   const playScanBeep = () => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ctx = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.25);
     } catch {
-      // AudioContext unavailable or blocked
+      // AudioContext unavailable
     }
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate([100, 50, 100]);
     }
   };
 
-  // Camera Management
-  const startCamera = async (facing: "environment" | "user" = cameraFacingMode) => {
+  // Stop Camera Scanner
+  const stopCamera = async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        if (html5QrCodeRef.current.isScanning) {
+          await html5QrCodeRef.current.stop();
+        }
+        html5QrCodeRef.current.clear();
+      } catch (err) {
+        console.warn("Error stopping camera", err);
+      }
+    }
+    setIsCameraActive(false);
+    setIsCameraLoading(false);
+    setTorchOn(false);
+    setActiveCameraLabel("");
+  };
+
+  // Start Camera with Cascading Fallback & Hardware Discovery
+  const startCamera = async (overrideCameraId?: string) => {
     setCameraError(null);
     setIsCameraLoading(true);
 
     try {
-      // Stop previous instance if running
-      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-        await html5QrCodeRef.current.stop();
-        html5QrCodeRef.current.clear();
+      // Stop existing instance first
+      await stopCamera();
+
+      // Check camera devices
+      let cameras = availableCameras;
+      if (!cameras || cameras.length === 0) {
+        try {
+          cameras = await Html5Qrcode.getCameras();
+          if (cameras) setAvailableCameras(cameras);
+        } catch {
+          // Permissions will be asked during start()
+        }
       }
 
-      const qrScanner = new Html5Qrcode("qr-camera-viewport");
+      // Determine camera target to run
+      const targetId = overrideCameraId || selectedCameraId;
+      let cameraConfig: string | { facingMode: string } = {
+        facingMode: "environment",
+      };
+
+      if (targetId && cameras && cameras.some((c) => c.id === targetId)) {
+        cameraConfig = targetId;
+        const matched = cameras.find((c) => c.id === targetId);
+        if (matched) setActiveCameraLabel(matched.label || "Connected Camera");
+      } else if (cameras && cameras.length > 0) {
+        cameraConfig = cameras[0].id;
+        setActiveCameraLabel(cameras[0].label || "Default Camera");
+        setSelectedCameraId(cameras[0].id);
+      }
+
+      const qrScanner = new Html5Qrcode("qr-camera-viewport", {
+        verbose: false,
+      });
       html5QrCodeRef.current = qrScanner;
 
-      await qrScanner.start(
-        { facingMode: facing },
-        {
-          fps: 15,
-          qrbox: (w, h) => {
-            const minSide = Math.min(w, h);
-            const box = Math.max(220, Math.floor(minSide * 0.72));
-            return { width: box, height: box };
-          },
-          aspectRatio: 1.0,
+      const scanConfig = {
+        fps: 15,
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const minSide = Math.min(viewfinderWidth, viewfinderHeight);
+          const edge = Math.floor(minSide * 0.75);
+          return {
+            width: Math.max(180, edge),
+            height: Math.max(180, edge),
+          };
         },
-        (decodedText) => {
-          playScanBeep();
-          handleProcessCode(decodedText);
-        },
-        () => {
-          // Frame parse error - ignore standard noise
+        aspectRatio: 1.0,
+      };
+
+      const onScanSuccess = (decodedText: string) => {
+        playScanBeep();
+        handleProcessCode(decodedText);
+      };
+
+      const onScanError = () => {
+        // Standard frame parse error, silent ignore
+      };
+
+      // Attempt 1: Start with selected target camera
+      try {
+        await qrScanner.start(
+          cameraConfig,
+          scanConfig,
+          onScanSuccess,
+          onScanError
+        );
+      } catch (firstErr: any) {
+        console.warn("First camera attempt failed, trying fallback...", firstErr);
+
+        // Attempt 2: Fallback to { facingMode: "user" } (Webcam)
+        try {
+          await qrScanner.start(
+            { facingMode: "user" },
+            scanConfig,
+            onScanSuccess,
+            onScanError
+          );
+          setActiveCameraLabel("User Front Camera / Webcam");
+        } catch (secondErr: any) {
+          // Attempt 3: Fallback to generic { facingMode: "environment" }
+          await qrScanner.start(
+            { facingMode: "environment" },
+            scanConfig,
+            onScanSuccess,
+            onScanError
+          );
+          setActiveCameraLabel("Environment Camera");
         }
-      );
+      }
 
       setIsCameraActive(true);
       setIsCameraLoading(false);
+
+      // Verify and force video styling so it fills the viewport
+      const videoEl = document.querySelector<HTMLVideoElement>(
+        "#qr-camera-viewport video"
+      );
+      if (videoEl) {
+        videoEl.style.width = "100%";
+        videoEl.style.height = "100%";
+        videoEl.style.objectFit = "cover";
+        videoEl.style.borderRadius = "1rem";
+        videoEl.style.display = "block";
+        if (videoEl.paused) {
+          videoEl.play().catch(() => {});
+        }
+      }
 
       // Check flashlight/torch capability
       try {
@@ -180,8 +373,7 @@ export default function ScanPage() {
       }
     } catch (err: any) {
       console.error("Camera startup error:", err);
-      setIsCameraActive(false);
-      setIsCameraLoading(false);
+      await stopCamera();
 
       if (
         err?.name === "NotAllowedError" ||
@@ -189,42 +381,24 @@ export default function ScanPage() {
         err?.message?.toLowerCase().includes("permission")
       ) {
         setCameraError(
-          "Camera permission was denied. Please click the lock/camera icon in your browser address bar to allow camera access."
+          "Camera permission was denied. Please click the lock or camera icon in your browser address bar to allow camera access."
         );
-      } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
+      } else if (
+        err?.name === "NotFoundError" ||
+        err?.name === "DevicesNotFoundError"
+      ) {
         setCameraError(
-          "No camera hardware detected on this device. You can still scan passes by uploading a pass image or using manual entry below."
+          "No camera hardware detected on this device. You can still scan passes by uploading a pass photo or using the manual entry below."
         );
       } else {
         setCameraError(
-          `Unable to access camera: ${err?.message || "Please check camera permissions."}`
+          `Unable to open camera: ${err?.message || "Please check camera permissions."}`
         );
       }
     }
   };
 
-  const stopCamera = async () => {
-    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-      try {
-        await html5QrCodeRef.current.stop();
-        html5QrCodeRef.current.clear();
-      } catch (err) {
-        console.warn("Error stopping camera", err);
-      }
-    }
-    setIsCameraActive(false);
-    setTorchOn(false);
-  };
-
-  const switchCamera = async () => {
-    const nextFacing = cameraFacingMode === "environment" ? "user" : "environment";
-    setCameraFacingMode(nextFacing);
-    if (isCameraActive) {
-      await stopCamera();
-      await startCamera(nextFacing);
-    }
-  };
-
+  // Toggle Torch/Flashlight
   const toggleTorch = async () => {
     if (!html5QrCodeRef.current || !hasTorch) return;
     try {
@@ -238,7 +412,15 @@ export default function ScanPage() {
     }
   };
 
-  // Image File Scanner
+  // Switch to a specific camera hardware
+  const handleSelectCamera = async (cameraId: string) => {
+    setSelectedCameraId(cameraId);
+    if (isCameraActive) {
+      await startCamera(cameraId);
+    }
+  };
+
+  // File Upload Pass Scanner
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -250,7 +432,9 @@ export default function ScanPage() {
       playScanBeep();
       handleProcessCode(result);
     } catch (err: any) {
-      setErrorMessage("No valid QR code pass detected in the selected image file.");
+      setErrorMessage(
+        "No valid QR code pass detected in the selected image file."
+      );
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -259,12 +443,13 @@ export default function ScanPage() {
   // Clean up camera on unmount
   useEffect(() => {
     return () => {
-      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-        html5QrCodeRef.current.stop().catch(() => {}).finally(() => {
-          try {
-            html5QrCodeRef.current?.clear();
-          } catch {}
-        });
+      if (html5QrCodeRef.current) {
+        try {
+          if (html5QrCodeRef.current.isScanning) {
+            html5QrCodeRef.current.stop().catch(() => {});
+          }
+          html5QrCodeRef.current.clear();
+        } catch {}
       }
     };
   }, []);
@@ -276,7 +461,9 @@ export default function ScanPage() {
     const decoded = decodeQRPayload(codeText.trim());
 
     if (!decoded) {
-      setErrorMessage("Invalid or corrupted QR evacuation token format. Please re-scan.");
+      setErrorMessage(
+        "Invalid or corrupted QR evacuation token format. Please re-scan."
+      );
       setScannedResult(null);
       setMatchedHousehold(null);
       setMatchedTriage(null);
@@ -292,16 +479,22 @@ export default function ScanPage() {
       const household = allHouseholds.find(
         (h) =>
           h.id.startsWith(decoded.shortRef) ||
-          h.head_name.toLowerCase().trim() === (decoded.headName || "").toLowerCase().trim()
+          h.head_name.toLowerCase().trim() ===
+            (decoded.headName || "").toLowerCase().trim()
       );
       setMatchedHousehold(household || null);
 
       if (household) {
-        const triage = await db.triage.where("household_id").equals(household.id).first();
+        const triage = await db.triage
+          .where("household_id")
+          .equals(household.id)
+          .first();
         setMatchedTriage(triage || null);
       } else {
-        // Fallback: check if triage exists for shortRef
-        const triage = await db.triage.where("id").equals(`triage-${decoded.shortRef}`).first();
+        const triage = await db.triage
+          .where("id")
+          .equals(`triage-${decoded.shortRef}`)
+          .first();
         setMatchedTriage(triage || null);
       }
 
@@ -309,7 +502,11 @@ export default function ScanPage() {
       const existing = await db.admissions
         .where("shelter_id")
         .equals(selectedShelterId)
-        .and((adm) => adm.household_token === decoded.shortRef || adm.head_name === decoded.headName)
+        .and(
+          (adm) =>
+            adm.household_token === decoded.shortRef ||
+            adm.head_name === decoded.headName
+        )
         .first();
 
       setExistingAdmission(existing || null);
@@ -321,23 +518,26 @@ export default function ScanPage() {
     }
   };
 
-  // Confirm Admission & Calculate Entered Headcount
+  // Confirm Admission & Increment Shelter Headcount
   const handleConfirmAdmission = async () => {
     if (!scannedResult || !currentShelter) return;
 
     try {
       // 1. Increment Shelter Occupancy in IndexedDB
-      const newOccupancy = currentShelter.current_occupancy + scannedResult.totalMembers;
+      const newOccupancy =
+        currentShelter.current_occupancy + scannedResult.totalMembers;
       await db.shelters.update(selectedShelterId, {
         current_occupancy: newOccupancy,
       });
 
       // 2. Derive triage category
       let triageCategory = "P3_STANDARD";
-      if (scannedResult.triageCode.startsWith("P1")) triageCategory = "P1_CRITICAL";
-      else if (scannedResult.triageCode.startsWith("P2")) triageCategory = "P2_URGENT";
+      if (scannedResult.triageCode.startsWith("P1"))
+        triageCategory = "P1_CRITICAL";
+      else if (scannedResult.triageCode.startsWith("P2"))
+        triageCategory = "P2_URGENT";
 
-      // 3. Create permanent admission muster record
+      // 3. Create permanent admission muster record with current IST timestamp
       const admissionRecord: ShelterAdmission = {
         id: crypto.randomUUID(),
         shelter_id: selectedShelterId,
@@ -384,14 +584,21 @@ export default function ScanPage() {
 
   // Revert / Undo Admission (decrements headcount if admitted accidentally)
   const handleUndoAdmission = async (admissionId: string) => {
-    if (!confirm("Are you sure you want to revert this admission and deduct the headcount from the shelter muster?")) {
+    if (
+      !confirm(
+        "Are you sure you want to revert this admission and deduct the headcount from the shelter muster?"
+      )
+    ) {
       return;
     }
 
     try {
       const record = await db.admissions.get(admissionId);
       if (record && currentShelter) {
-        const revisedOccupancy = Math.max(0, currentShelter.current_occupancy - record.total_members);
+        const revisedOccupancy = Math.max(
+          0,
+          currentShelter.current_occupancy - record.total_members
+        );
         await db.shelters.update(selectedShelterId, {
           current_occupancy: revisedOccupancy,
         });
@@ -410,17 +617,34 @@ export default function ScanPage() {
     }
   };
 
-  // Calculate gatekeeper shift totals
-  const totalShiftEvacuees = admissions.reduce((sum, a) => sum + a.total_members, 0);
+  // Calculate shift totals
+  const totalShiftEvacuees = admissions.reduce(
+    (sum, a) => sum + a.total_members,
+    0
+  );
   const totalShiftHouseholds = admissions.length;
-  const totalShiftInfants = admissions.reduce((sum, a) => sum + a.child_under_five_count, 0);
-  const totalShiftElderly = admissions.reduce((sum, a) => sum + a.elderly_above_sixty_count, 0);
-  const totalShiftLivestock = admissions.reduce((sum, a) => sum + a.livestock_count, 0);
-  const totalShiftCritical = admissions.filter((a) => a.triage_level === "P1_CRITICAL").length;
+  const totalShiftInfants = admissions.reduce(
+    (sum, a) => sum + a.child_under_five_count,
+    0
+  );
+  const totalShiftElderly = admissions.reduce(
+    (sum, a) => sum + a.elderly_above_sixty_count,
+    0
+  );
+  const totalShiftLivestock = admissions.reduce(
+    (sum, a) => sum + a.livestock_count,
+    0
+  );
+  const totalShiftCritical = admissions.filter(
+    (a) => a.triage_level === "P1_CRITICAL"
+  ).length;
 
   const currentCapacity = currentShelter?.capacity_persons || 600;
   const currentOccupancy = currentShelter?.current_occupancy || 0;
-  const occupancyPercent = Math.min(100, Math.round((currentOccupancy / currentCapacity) * 100));
+  const occupancyPercent = Math.min(
+    100,
+    Math.round((currentOccupancy / currentCapacity) * 100)
+  );
   const remainingSpots = Math.max(0, currentCapacity - currentOccupancy);
 
   // Filtered muster list
@@ -431,7 +655,7 @@ export default function ScanPage() {
       a.household_token.toLowerCase().includes(searchMuster.toLowerCase())
   );
 
-  // Sample Passes for 1-Click Verification Testing
+  // Sample Passes for Instant Verification Testing
   const samplePass1 =
     "V1|OD-KEN-RAJ-001|c4b1|5|2|2|1|0|2|P1_PREG|Pravat Kumar Nayak|Talachua";
   const samplePass2 =
@@ -446,9 +670,10 @@ export default function ScanPage() {
       {/* Hidden File Sink for Image QR Decoding */}
       <div id="qr-hidden-file-sink" className="hidden" />
 
-      {/* Top Banner & Shelter Live Occupancy Calculator */}
+      {/* TOP BANNER: SHELTER SELECTION, IST CLOCK & CAPACITY */}
       <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl space-y-4">
-        <div className="flex items-center justify-between gap-3">
+        {/* Header & Tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shadow-inner">
               <QrCode className="w-6 h-6" />
@@ -457,16 +682,16 @@ export default function ScanPage() {
               <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
                 <span>{t.scanTitle}</span>
                 <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  GATE MUSTER
+                  OFFLINE MUSTER
                 </span>
               </h1>
               <p className="text-xs text-slate-400">
-                Camera QR Pass Scanner & Live Intake Admission Ledger
+                Optical QR Scanner • Real-time Headcount Admission Ledger
               </p>
             </div>
           </div>
 
-          {/* Tab Selector */}
+          {/* View Tab Selector */}
           <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
             <button
               onClick={() => setActiveTab("scanner")}
@@ -477,7 +702,7 @@ export default function ScanPage() {
               }`}
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>Scanner</span>
+              <span>Camera Scanner</span>
             </button>
             <button
               onClick={() => setActiveTab("muster")}
@@ -493,13 +718,29 @@ export default function ScanPage() {
           </div>
         </div>
 
+        {/* Live Indian Standard Time (IST) Clock Bar */}
+        <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+          <div className="flex items-center gap-2 text-slate-300">
+            <Clock className="w-4 h-4 text-emerald-400" />
+            <span className="font-semibold text-slate-400">
+              Indian Standard Time (IST):
+            </span>
+            <span className="font-mono font-bold text-emerald-300">
+              {currentISTClock || "Synchronizing IST..."}
+            </span>
+          </div>
+          <span className="text-[10px] font-mono bg-slate-900 px-2 py-0.5 rounded text-sky-400 border border-slate-800">
+            TIMEZONE: ASIA/KOLKATA
+          </span>
+        </div>
+
         {/* Operating Shelter Selector */}
-        <div className="pt-3 border-t border-slate-800/80 space-y-2">
+        <div className="pt-2 border-t border-slate-800/80 space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
               <span>{t.selectShelter}</span>
               <span className="text-[11px] text-slate-500">
-                ({shelters.length} Available in Odisha & Andhra Pradesh)
+                ({shelters.length} Coastal Shelters Available)
               </span>
             </label>
             <span className="text-[11px] font-mono font-semibold text-sky-400">
@@ -523,10 +764,15 @@ export default function ScanPage() {
         {currentShelter && (
           <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 font-medium">Shelter Capacity Status:</span>
+              <span className="text-slate-400 font-medium">
+                Shelter Capacity Status:
+              </span>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-white text-sm">
-                  {currentOccupancy} <span className="text-slate-500 text-xs font-normal">/ {currentCapacity} Persons</span>
+                  {currentOccupancy}{" "}
+                  <span className="text-slate-500 text-xs font-normal">
+                    / {currentCapacity} Persons
+                  </span>
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
@@ -558,12 +804,16 @@ export default function ScanPage() {
 
             <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
               <span>
-                Remaining Capacity:{" "}
-                <strong className="text-emerald-400 font-bold">{remainingSpots} Vacancies</strong>
+                Available Vacancy:{" "}
+                <strong className="text-emerald-400 font-bold">
+                  {remainingSpots} Remaining
+                </strong>
               </span>
               <span>
                 Admitted This Gate Shift:{" "}
-                <strong className="text-sky-400 font-bold">+{totalShiftEvacuees} Persons ({totalShiftHouseholds} Families)</strong>
+                <strong className="text-sky-400 font-bold">
+                  +{totalShiftEvacuees} Persons ({totalShiftHouseholds} Families)
+                </strong>
               </span>
             </div>
           </div>
@@ -574,7 +824,7 @@ export default function ScanPage() {
         <>
           {/* CAMERA SCANNER VIEWPORT */}
           <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Camera className="w-4 h-4 text-emerald-400" />
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider">
@@ -582,11 +832,12 @@ export default function ScanPage() {
                 </h2>
               </div>
 
-              {isCameraActive && (
+              {/* Camera Status & Active Controls */}
+              {isCameraActive ? (
                 <div className="flex items-center gap-2">
                   <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold animate-pulse">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    SCANNING LIVE
+                    LIVE SCANNER
                   </span>
 
                   {hasTorch && (
@@ -597,36 +848,59 @@ export default function ScanPage() {
                           ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
                           : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
                       }`}
-                      title="Toggle Torch/Flashlight"
+                      title="Toggle Flashlight / Torch"
                     >
                       <Flashlight className="w-3.5 h-3.5" />
                     </button>
                   )}
 
                   <button
-                    onClick={switchCamera}
-                    className="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition text-xs"
-                    title="Switch Front/Rear Camera"
+                    onClick={stopCamera}
+                    className="p-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 text-xs transition"
+                    title="Stop Camera Feed"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
+              ) : (
+                <span className="text-[11px] font-mono text-slate-500">
+                  CAMERA STANDBY
+                </span>
               )}
             </div>
 
-            {/* CAMERA CONTAINER */}
-            <div className="relative w-full max-w-sm mx-auto aspect-square rounded-2xl bg-slate-950 border-2 border-slate-800 overflow-hidden flex flex-col items-center justify-center group shadow-2xl">
-              {/* HTML5 QR Code Mount Element */}
+            {/* Hardware Camera Selector (if multiple cameras detected) */}
+            {availableCameras.length > 1 && (
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+                <Video className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                <span className="text-slate-400 text-[11px] shrink-0">Device:</span>
+                <select
+                  value={selectedCameraId}
+                  onChange={(e) => handleSelectCamera(e.target.value)}
+                  className="bg-transparent text-slate-200 text-xs focus:outline-none w-full"
+                >
+                  {availableCameras.map((cam, idx) => (
+                    <option key={cam.id} value={cam.id} className="bg-slate-900">
+                      {cam.label || `Camera ${idx + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* FIXED CAMERA MOUNT VIEWPORT */}
+            <div className="relative w-full max-w-sm mx-auto aspect-square rounded-2xl bg-slate-950 border-2 border-slate-800 overflow-hidden shadow-2xl">
+              {/* Permanent Mount Element: Always rendered with fixed dimensions */}
               <div
                 id="qr-camera-viewport"
-                className={`w-full h-full ${isCameraActive ? "block" : "hidden"}`}
+                className="absolute inset-0 w-full h-full bg-black overflow-hidden flex items-center justify-center rounded-2xl"
               />
 
               {/* OVERLAY HUD WHEN CAMERA IS ACTIVE */}
               {isCameraActive && (
                 <div className="absolute inset-0 pointer-events-none z-10 flex flex-col items-center justify-center p-6">
                   {/* Corner Targeting Brackets */}
-                  <div className="relative w-56 h-56">
+                  <div className="relative w-56 h-56 pointer-events-none">
                     <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg shadow-sm shadow-emerald-400/50" />
                     <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg shadow-sm shadow-emerald-400/50" />
                     <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg shadow-sm shadow-emerald-400/50" />
@@ -637,14 +911,16 @@ export default function ScanPage() {
                   </div>
 
                   <div className="mt-3 px-3 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-[11px] font-medium text-slate-300 backdrop-blur-sm">
-                    Align QR Pass Token in Target Square
+                    {activeCameraLabel
+                      ? `Scanning via ${activeCameraLabel}`
+                      : "Align QR Pass Token in Target Square"}
                   </div>
                 </div>
               )}
 
-              {/* PLACEHOLDER WHEN CAMERA IS INACTIVE */}
+              {/* PLACEHOLDER CARD WHEN CAMERA IS INACTIVE */}
               {!isCameraActive && (
-                <div className="p-6 text-center space-y-4">
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 bg-slate-950 text-center space-y-4">
                   <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-lg">
                     <Camera className="w-8 h-8" />
                   </div>
@@ -653,20 +929,20 @@ export default function ScanPage() {
                       Camera Scanner Ready
                     </h3>
                     <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-                      Click below to activate device camera and scan evacuee QR passes in real-time.
+                      Click below to activate device webcam or rear camera to scan evacuee QR passes.
                     </p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2 w-full">
                     <button
-                      onClick={() => startCamera(cameraFacingMode)}
+                      onClick={() => startCamera(selectedCameraId)}
                       disabled={isCameraLoading}
                       className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2"
                     >
                       {isCameraLoading ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Requesting Camera...</span>
+                          <span>Connecting Camera...</span>
                         </>
                       ) : (
                         <>
@@ -695,9 +971,9 @@ export default function ScanPage() {
               )}
             </div>
 
-            {/* Camera Controls when Active */}
+            {/* Camera Running Controls Bar */}
             {isCameraActive && (
-              <div className="flex items-center justify-center gap-3 pt-2">
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                 <button
                   onClick={stopCamera}
                   className="px-4 py-2 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold text-xs transition flex items-center gap-2"
@@ -705,26 +981,47 @@ export default function ScanPage() {
                   <X className="w-4 h-4" />
                   <span>Pause Camera</span>
                 </button>
+
+                {availableCameras.length > 1 && (
+                  <button
+                    onClick={() => {
+                      const nextIdx =
+                        (availableCameras.findIndex(
+                          (c) => c.id === selectedCameraId
+                        ) +
+                          1) %
+                        availableCameras.length;
+                      handleSelectCamera(availableCameras[nextIdx].id);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4 text-emerald-400" />
+                    <span>Switch Camera Device</span>
+                  </button>
+                )}
+
                 <button
-                  onClick={switchCamera}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-2"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs transition border border-slate-700 flex items-center gap-1.5"
                 >
-                  <RefreshCw className="w-4 h-4 text-emerald-400" />
-                  <span>Flip Camera ({cameraFacingMode === "environment" ? "Back" : "Front"})</span>
+                  <Upload className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Upload Image</span>
                 </button>
               </div>
             )}
 
-            {/* Camera Permission / Hardware Alert */}
+            {/* Camera Permission / Error Alert */}
             {cameraError && (
               <div className="p-3.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-200 text-xs flex items-start gap-2.5">
                 <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <div className="font-bold">Camera Notice</div>
-                  <div className="text-amber-300/90 leading-relaxed">{cameraError}</div>
+                  <div className="font-bold">Camera Access Notice</div>
+                  <div className="text-amber-300/90 leading-relaxed">
+                    {cameraError}
+                  </div>
                   <div className="pt-1">
                     <button
-                      onClick={() => startCamera(cameraFacingMode)}
+                      onClick={() => startCamera()}
                       className="text-[11px] underline font-bold hover:text-white"
                     >
                       Retry Camera Activation
@@ -734,7 +1031,7 @@ export default function ScanPage() {
               </div>
             )}
 
-            {/* Error Message for Corrupted Pass */}
+            {/* Error Message for Invalid Pass */}
             {errorMessage && (
               <div className="p-3 rounded-xl bg-red-950/80 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -765,9 +1062,9 @@ export default function ScanPage() {
                 <div className="flex items-center justify-between text-[11px] text-slate-400">
                   <span className="font-semibold flex items-center gap-1 text-slate-300">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    Quick Test Passes (OD & AP Coastal Cases):
+                    Quick Test Passes (Odisha & Andhra Pradesh Cases):
                   </span>
-                  <span>Click to test instantly without camera</span>
+                  <span>1-Click Test Pass Simulation</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <button
@@ -779,7 +1076,9 @@ export default function ScanPage() {
                   >
                     <div className="font-bold text-sky-300 text-[11px] group-hover:text-white flex items-center justify-between">
                       <span>Pravat Nayak</span>
-                      <span className="text-[10px] text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-500/30">P1 PREG</span>
+                      <span className="text-[10px] text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-500/30">
+                        P1 PREG
+                      </span>
                     </div>
                     <div className="text-[10px] text-slate-400 mt-0.5">
                       Talachua • 5 Members (1 Infant, 2 Cattle)
@@ -795,7 +1094,9 @@ export default function ScanPage() {
                   >
                     <div className="font-bold text-amber-300 text-[11px] group-hover:text-white flex items-center justify-between">
                       <span>Bishnu Das</span>
-                      <span className="text-[10px] text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-500/30">P1 BED</span>
+                      <span className="text-[10px] text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-500/30">
+                        P1 BED
+                      </span>
                     </div>
                     <div className="text-[10px] text-slate-400 mt-0.5">
                       Batighar • 6 Members (1 Bedridden, 4 Cattle)
@@ -811,7 +1112,9 @@ export default function ScanPage() {
                   >
                     <div className="font-bold text-emerald-300 text-[11px] group-hover:text-white flex items-center justify-between">
                       <span>K. Appala Naidu</span>
-                      <span className="text-[10px] text-amber-400 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/30">P2 INF</span>
+                      <span className="text-[10px] text-amber-400 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/30">
+                        P2 INF
+                      </span>
                     </div>
                     <div className="text-[10px] text-slate-400 mt-0.5">
                       Bheemili AP • 4 Members (1 Infant)
@@ -827,7 +1130,9 @@ export default function ScanPage() {
                   >
                     <div className="font-bold text-purple-300 text-[11px] group-hover:text-white flex items-center justify-between">
                       <span>M. Subba Rao</span>
-                      <span className="text-[10px] text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-500/30">P1 CHRONIC</span>
+                      <span className="text-[10px] text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-500/30">
+                        P1 CHRONIC
+                      </span>
                     </div>
                     <div className="text-[10px] text-slate-400 mt-0.5">
                       Perupalem AP • 3 Members (Insulin-dependent)
@@ -882,7 +1187,8 @@ export default function ScanPage() {
                 <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between">
                   <span className="flex items-center gap-1.5 font-medium">
                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    Official Designated Shelter Verified: <strong>{currentShelter?.name}</strong>
+                    Official Designated Shelter Verified:{" "}
+                    <strong>{currentShelter?.name}</strong>
                   </span>
                   <span className="text-[10px] font-mono bg-emerald-900/60 px-2 py-0.5 rounded text-emerald-200">
                     MATCH CONFIRMED
@@ -892,7 +1198,8 @@ export default function ScanPage() {
                 <div className="p-3 rounded-xl bg-amber-950/50 border border-amber-500/40 text-amber-200 text-xs flex items-center justify-between">
                   <span className="flex items-center gap-1.5 font-medium">
                     <AlertTriangle className="w-4 h-4 text-amber-400" />
-                    Originally Designated For Shelter: <strong>{scannedResult.shelterId}</strong>
+                    Originally Designated For Shelter:{" "}
+                    <strong>{scannedResult.shelterId}</strong>
                   </span>
                   <span className="text-[10px] font-bold bg-amber-900/60 px-2 py-0.5 rounded text-amber-200">
                     DIVERTED EVACUEE
@@ -909,32 +1216,42 @@ export default function ScanPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Head of Household:</span>
+                    <span className="text-slate-400 block text-[11px]">
+                      Head of Household:
+                    </span>
                     <span className="text-sm font-bold text-white">
                       {scannedResult.headName}
                     </span>
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Hamlet / Village of Origin:</span>
+                    <span className="text-slate-400 block text-[11px]">
+                      Hamlet / Village of Origin:
+                    </span>
                     <span className="text-sm font-semibold text-slate-200">
                       {scannedResult.hamletName}
                     </span>
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Ward / Panchayat:</span>
+                    <span className="text-slate-400 block text-[11px]">
+                      Ward / Panchayat:
+                    </span>
                     <span className="text-slate-300 font-medium">
-                      Ward {matchedHousehold?.ward_number || 1} • {currentShelter?.gram_panchayat || "Coastal Sector"}
+                      Ward {matchedHousehold?.ward_number || 1} •{" "}
+                      {currentShelter?.gram_panchayat || "Coastal Sector"}
                     </span>
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Intake Registration Record:</span>
-                    <span className="text-slate-300 font-medium">
-                      {matchedHousehold?.registered_at
-                        ? new Date(matchedHousehold.registered_at).toLocaleString()
-                        : "Verified Field Intake Record"}
+                    <span className="text-slate-400 block text-[11px]">
+                      Intake Registration Record (IST):
+                    </span>
+                    <span className="text-emerald-400 font-bold font-mono text-xs">
+                      {formatToIST(
+                        matchedHousehold?.registered_at ||
+                          Date.now() - 25 * 60 * 1000
+                      )}
                     </span>
                   </div>
                 </div>
@@ -955,21 +1272,27 @@ export default function ScanPage() {
                 {/* Metric Badges */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Total Members</div>
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold">
+                      Total Members
+                    </div>
                     <div className="text-base font-black text-sky-400 mt-0.5">
                       {scannedResult.totalMembers}
                     </div>
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Adult Males</div>
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold">
+                      Adult Males
+                    </div>
                     <div className="text-base font-bold text-slate-200 mt-0.5">
                       {scannedResult.maleCount}
                     </div>
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Adult Females</div>
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold">
+                      Adult Females
+                    </div>
                     <div className="text-base font-bold text-slate-200 mt-0.5">
                       {scannedResult.femaleCount}
                     </div>
@@ -980,7 +1303,13 @@ export default function ScanPage() {
                       <Baby className="w-3 h-3 text-pink-400" />
                       <span>Infants &lt;5y</span>
                     </div>
-                    <div className={`text-base font-bold mt-0.5 ${scannedResult.infantCount > 0 ? "text-pink-400" : "text-slate-400"}`}>
+                    <div
+                      className={`text-base font-bold mt-0.5 ${
+                        scannedResult.infantCount > 0
+                          ? "text-pink-400"
+                          : "text-slate-400"
+                      }`}
+                    >
                       {scannedResult.infantCount}
                     </div>
                   </div>
@@ -990,7 +1319,13 @@ export default function ScanPage() {
                       <HeartPulse className="w-3 h-3 text-amber-400" />
                       <span>Elderly &gt;60y</span>
                     </div>
-                    <div className={`text-base font-bold mt-0.5 ${scannedResult.elderlyCount > 0 ? "text-amber-400" : "text-slate-400"}`}>
+                    <div
+                      className={`text-base font-bold mt-0.5 ${
+                        scannedResult.elderlyCount > 0
+                          ? "text-amber-400"
+                          : "text-slate-400"
+                      }`}
+                    >
                       {scannedResult.elderlyCount}
                     </div>
                   </div>
@@ -1065,8 +1400,16 @@ export default function ScanPage() {
                     </span>
                     <span>
                       Priority Level:{" "}
-                      <strong className={scannedResult.triageCode.startsWith("P1") ? "text-red-400" : "text-sky-400"}>
-                        {scannedResult.triageCode.startsWith("P1") ? "P1 Immediate" : "Standard Priority"}
+                      <strong
+                        className={
+                          scannedResult.triageCode.startsWith("P1")
+                            ? "text-red-400"
+                            : "text-sky-400"
+                        }
+                      >
+                        {scannedResult.triageCode.startsWith("P1")
+                          ? "P1 Immediate Care"
+                          : "Standard Priority"}
                       </strong>
                     </span>
                   </div>
@@ -1082,56 +1425,80 @@ export default function ScanPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
                   <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-medium">Drinking Water Quota:</span>
+                    <span className="text-[10px] text-slate-400 block font-medium">
+                      Drinking Water Quota:
+                    </span>
                     <span className="text-sm font-bold text-sky-400">
                       {scannedResult.totalMembers * 3} Litres / Day
                     </span>
-                    <span className="text-[10px] text-slate-500 block">3L per person standard</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      3L per person standard
+                    </span>
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-medium">Dry Food Rations:</span>
+                    <span className="text-[10px] text-slate-400 block font-medium">
+                      Dry Food Rations:
+                    </span>
                     <span className="text-sm font-bold text-amber-400">
                       {scannedResult.totalMembers * 2} Packets
                     </span>
-                    <span className="text-[10px] text-slate-500 block">Chuda, gur & biscuits</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      Chuda, gur & biscuits
+                    </span>
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-medium">ORS Sachets & Halogen:</span>
+                    <span className="text-[10px] text-slate-400 block font-medium">
+                      ORS Sachets & Halogen:
+                    </span>
                     <span className="text-sm font-bold text-emerald-400">
                       {scannedResult.totalMembers * 2} Units
                     </span>
-                    <span className="text-[10px] text-slate-500 block">Electrolyte & water tabs</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      Electrolyte & water tabs
+                    </span>
                   </div>
 
                   {scannedResult.infantCount > 0 && (
                     <div className="p-2.5 rounded-lg bg-pink-950/50 border border-pink-500/30">
-                      <span className="text-[10px] text-pink-300 block font-medium">Infant Baby Formula:</span>
+                      <span className="text-[10px] text-pink-300 block font-medium">
+                        Infant Baby Formula:
+                      </span>
                       <span className="text-sm font-bold text-pink-200">
                         {scannedResult.infantCount} Tin / Pack
                       </span>
-                      <span className="text-[10px] text-pink-400/80 block">For infant &lt;5y</span>
+                      <span className="text-[10px] text-pink-400/80 block">
+                        For infant &lt;5y
+                      </span>
                     </div>
                   )}
 
                   {scannedResult.femaleCount > 0 && (
                     <div className="p-2.5 rounded-lg bg-purple-950/50 border border-purple-500/30">
-                      <span className="text-[10px] text-purple-300 block font-medium">Sanitary & Dignity Kits:</span>
+                      <span className="text-[10px] text-purple-300 block font-medium">
+                        Sanitary & Dignity Kits:
+                      </span>
                       <span className="text-sm font-bold text-purple-200">
                         {scannedResult.femaleCount} Kits
                       </span>
-                      <span className="text-[10px] text-purple-400/80 block">Adult female evacuees</span>
+                      <span className="text-[10px] text-purple-400/80 block">
+                        Adult female evacuees
+                      </span>
                     </div>
                   )}
 
                   {scannedResult.livestockCount > 0 && (
                     <div className="p-2.5 rounded-lg bg-emerald-950/50 border border-emerald-500/30">
-                      <span className="text-[10px] text-emerald-300 block font-medium">Cattle Fodder Tokens:</span>
+                      <span className="text-[10px] text-emerald-300 block font-medium">
+                        Cattle Fodder Tokens:
+                      </span>
                       <span className="text-sm font-bold text-emerald-200">
                         {scannedResult.livestockCount} Feed Bundles
                       </span>
-                      <span className="text-[10px] text-emerald-400/80 block">Pen & dry straw allocation</span>
+                      <span className="text-[10px] text-emerald-400/80 block">
+                        Pen & dry straw allocation
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1146,7 +1513,8 @@ export default function ScanPage() {
                   >
                     <ShieldCheck className="w-5 h-5 group-hover:scale-110 transition" />
                     <span>
-                      Confirm Shelter Admission (+{scannedResult.totalMembers} Headcount to Muster)
+                      Confirm Shelter Admission (+{scannedResult.totalMembers}{" "}
+                      Headcount to Muster)
                     </span>
                   </button>
                 ) : (
@@ -1162,7 +1530,14 @@ export default function ScanPage() {
                     </div>
                     <p className="text-xs text-emerald-200/80">
                       Shelter current occupancy updated to{" "}
-                      <strong>{currentShelter?.current_occupancy} persons</strong>. Gate muster roll has been recorded offline.
+                      <strong>{currentShelter?.current_occupancy} persons</strong>.
+                      Gate entry timestamp recorded at{" "}
+                      <strong className="text-white">
+                        {existingAdmission
+                          ? formatToISTTimeOnly(existingAdmission.admitted_at)
+                          : formatToISTTimeOnly(Date.now())}
+                      </strong>
+                      .
                     </p>
                   </div>
                 )}
@@ -1177,7 +1552,7 @@ export default function ScanPage() {
                       setExistingAdmission(null);
                       setIsAdmitted(false);
                       if (!isCameraActive) {
-                        startCamera(cameraFacingMode);
+                        startCamera(selectedCameraId);
                       }
                     }}
                     className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition border border-slate-700 flex items-center justify-center gap-2"
@@ -1208,7 +1583,7 @@ export default function ScanPage() {
                 <span>Shelter Gate Muster Roll</span>
               </h2>
               <p className="text-xs text-slate-400">
-                Live list of evacuees and families admitted into {currentShelter?.name}
+                Official list of evacuees admitted into {currentShelter?.name}
               </p>
             </div>
 
@@ -1224,15 +1599,21 @@ export default function ScanPage() {
           {/* Admission Summary Metrics Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold">Total Entered</span>
+              <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                Total Entered
+              </span>
               <div className="text-lg font-black text-sky-400 mt-0.5">
                 {totalShiftEvacuees} Persons
               </div>
-              <span className="text-[10px] text-slate-500">{totalShiftHouseholds} Households</span>
+              <span className="text-[10px] text-slate-500">
+                {totalShiftHouseholds} Households
+              </span>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold">Infants Entered</span>
+              <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                Infants Entered
+              </span>
               <div className="text-lg font-black text-pink-400 mt-0.5">
                 {totalShiftInfants} Infants
               </div>
@@ -1240,7 +1621,9 @@ export default function ScanPage() {
             </div>
 
             <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold">Elderly Entered</span>
+              <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                Elderly Entered
+              </span>
               <div className="text-lg font-black text-amber-400 mt-0.5">
                 {totalShiftElderly} Senior Citizens
               </div>
@@ -1248,11 +1631,15 @@ export default function ScanPage() {
             </div>
 
             <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold">Critical Triage (P1)</span>
+              <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                Critical Triage (P1)
+              </span>
               <div className="text-lg font-black text-red-400 mt-0.5">
                 {totalShiftCritical} Cases
               </div>
-              <span className="text-[10px] text-slate-500">Maternity / Bedridden</span>
+              <span className="text-[10px] text-slate-500">
+                Maternity / Bedridden
+              </span>
             </div>
           </div>
 
@@ -1272,10 +1659,13 @@ export default function ScanPage() {
             <div className="p-8 rounded-xl bg-slate-950 text-center space-y-2 border border-slate-800">
               <Users className="w-8 h-8 text-slate-600 mx-auto" />
               <div className="text-xs font-semibold text-slate-400">
-                {searchMuster ? "No matching admitted evacuees found." : "No admissions recorded for this shelter yet."}
+                {searchMuster
+                  ? "No matching admitted evacuees found."
+                  : "No admissions recorded for this shelter yet."}
               </div>
               <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-                Scan household QR passes or use sample test passes to log evacuee entries into this shelter.
+                Scan household QR passes or use sample test passes to log
+                evacuee entries into this shelter.
               </p>
             </div>
           ) : (
@@ -1307,10 +1697,14 @@ export default function ScanPage() {
                     </div>
 
                     <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span>Origin: {adm.hamlet_name} (Ward {adm.ward_number || 1})</span>
+                      <span>
+                        Origin: {adm.hamlet_name} (Ward {adm.ward_number || 1})
+                      </span>
                       <span>•</span>
                       <span className="text-sky-300 font-semibold">
-                        {adm.total_members} Members ({adm.male_count}M • {adm.female_count}F • {adm.child_under_five_count} Inf • {adm.elderly_above_sixty_count} Eld)
+                        {adm.total_members} Members ({adm.male_count}M •{" "}
+                        {adm.female_count}F • {adm.child_under_five_count} Inf •{" "}
+                        {adm.elderly_above_sixty_count} Eld)
                       </span>
                       {adm.livestock_count > 0 && (
                         <>
@@ -1330,9 +1724,9 @@ export default function ScanPage() {
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-center">
-                    <div className="text-right text-[10px] text-slate-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      <span>{new Date(adm.admitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    <div className="text-right text-[10px] text-emerald-400 font-mono flex items-center gap-1 bg-slate-900 px-2 py-1 rounded border border-slate-800">
+                      <Clock className="w-3 h-3 text-emerald-400" />
+                      <span>{formatToISTTimeOnly(adm.admitted_at)}</span>
                     </div>
 
                     <button
