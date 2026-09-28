@@ -497,7 +497,7 @@ export default function ScanPage() {
     }
   };
 
-  // Ultra-Fast Continuous Camera-Frame Processing (Hardware-Accelerated BarcodeDetector)
+  // Ultra-Fast Continuous Camera-Frame Processing (Hardware BarcodeDetector + Offscreen jsQR)
   const startContinuousScan = () => {
     stopContinuousScan();
     isScanningActiveRef.current = true;
@@ -523,8 +523,6 @@ export default function ScanPage() {
     }
 
     const detector = nativeDetectorRef.current;
-    if (!detector) return; // Fallback to Html5Qrcode internal engine
-
     let isScanningThisFrame = false;
 
     const onFrame = async () => {
@@ -538,83 +536,68 @@ export default function ScanPage() {
       ) {
         isScanningThisFrame = true;
         try {
-          const barcodes = await detector.detect(videoEl);
-          if (barcodes && barcodes.length > 0) {
-            // Prioritize the barcode closest to the center scanning brackets
-            let chosen = barcodes[0];
-            if (barcodes.length > 1 && videoEl.videoWidth && videoEl.videoHeight) {
-              const centerX = videoEl.videoWidth / 2;
-              const centerY = videoEl.videoHeight / 2;
-              let minDistance = Infinity;
-              for (const b of barcodes) {
-                if (b.boundingBox) {
-                  const bx = b.boundingBox.x + b.boundingBox.width / 2;
-                  const by = b.boundingBox.y + b.boundingBox.height / 2;
-                  const dist = Math.hypot(bx - centerX, by - centerY);
-                  if (dist < minDistance) {
-                    minDistance = dist;
-                    chosen = b;
+          let detectedRaw: string | null = null;
+
+          // 1. Check Hardware-Accelerated BarcodeDetector if available
+          if (detector) {
+            try {
+              const barcodes = await detector.detect(videoEl);
+              if (barcodes && barcodes.length > 0) {
+                let chosen = barcodes[0];
+                if (barcodes.length > 1 && videoEl.videoWidth && videoEl.videoHeight) {
+                  const centerX = videoEl.videoWidth / 2;
+                  const centerY = videoEl.videoHeight / 2;
+                  let minDistance = Infinity;
+                  for (const b of barcodes) {
+                    if (b.boundingBox) {
+                      const bx = b.boundingBox.x + b.boundingBox.width / 2;
+                      const by = b.boundingBox.y + b.boundingBox.height / 2;
+                      const dist = Math.hypot(bx - centerX, by - centerY);
+                      if (dist < minDistance) {
+                        minDistance = dist;
+                        chosen = b;
+                      }
+                    }
                   }
                 }
+                detectedRaw = chosen?.rawValue?.trim() || null;
               }
-            }
-
-            const rawText = chosen?.rawValue?.trim();
-            if (rawText && !isProcessingScanRef.current) {
-              const now = Date.now();
-              if (
-                lastProcessedCodeRef.current === rawText &&
-                now - lastProcessedAtRef.current < 2500
-              ) {
-                // Ignore identical repeated scan within grace window
-              } else {
-                // STOP SCANNING IMMEDIATELY to prevent duplicate scans
-                isProcessingScanRef.current = true;
-                isScanningActiveRef.current = false;
-                lastProcessedCodeRef.current = rawText;
-                lastProcessedAtRef.current = now;
-
-                stopContinuousScan();
-                try {
-                  if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-                    html5QrCodeRef.current.pause(true);
-                  }
-                } catch {}
-
-                playScanBeep();
-                handleProcessCode(rawText);
-                return;
-              }
+            } catch {
+              // BarcodeDetector error, proceed to high-speed optical scan
             }
           }
 
-          // Check Circular QR Code if no square barcode detected
-          if (!isProcessingScanRef.current) {
-            const circularCode = detectCircularCodeFromVideo(videoEl);
-            if (circularCode && !isProcessingScanRef.current) {
-              const now = Date.now();
-              if (
-                lastProcessedCodeRef.current === circularCode &&
-                now - lastProcessedAtRef.current < 2500
-              ) {
-                // Ignore repeated scan within grace window
-              } else {
-                isProcessingScanRef.current = true;
-                isScanningActiveRef.current = false;
-                lastProcessedCodeRef.current = circularCode;
-                lastProcessedAtRef.current = now;
+          // 2. High-Speed Optical jsQR Scanner (Center Crop + Scaled Frame)
+          if (!detectedRaw && !isProcessingScanRef.current) {
+            detectedRaw = detectCircularCodeFromVideo(videoEl);
+          }
 
-                stopContinuousScan();
-                try {
-                  if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-                    html5QrCodeRef.current.pause(true);
-                  }
-                } catch {}
+          // 3. Process detection immediately if a valid code was found
+          if (detectedRaw && !isProcessingScanRef.current) {
+            const rawText = detectedRaw.trim();
+            const now = Date.now();
+            if (
+              lastProcessedCodeRef.current === rawText &&
+              now - lastProcessedAtRef.current < 2500
+            ) {
+              // Ignore identical repeated scan within grace window
+            } else {
+              // STOP SCANNING IMMEDIATELY to prevent duplicate scans
+              isProcessingScanRef.current = true;
+              isScanningActiveRef.current = false;
+              lastProcessedCodeRef.current = rawText;
+              lastProcessedAtRef.current = now;
 
-                playScanBeep();
-                handleProcessCode(circularCode);
-                return;
-              }
+              stopContinuousScan();
+              try {
+                if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+                  html5QrCodeRef.current.pause(true);
+                }
+              } catch {}
+
+              playScanBeep();
+              handleProcessCode(rawText);
+              return;
             }
           }
         } catch {
