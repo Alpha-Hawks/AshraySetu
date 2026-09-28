@@ -929,6 +929,28 @@ app.get("/api/time", (req, res) => {
 });
 
 /**
+ * Authoritative Server Time Endpoint
+ * Synchronizes client clocks and provides authoritative server timestamps
+ */
+app.get("/api/time", (req, res) => {
+  const now = Date.now();
+  res.json({
+    server_time: now,
+    iso: new Date(now).toISOString(),
+    timestamp: now,
+  });
+});
+
+app.get("/api/qr/time", (req, res) => {
+  const now = Date.now();
+  res.json({
+    server_time: now,
+    iso: new Date(now).toISOString(),
+    timestamp: now,
+  });
+});
+
+/**
  * QR Code Creation / Issuance Registration Endpoint
  * Records authoritative qr_created_at on the server
  */
@@ -943,10 +965,12 @@ app.post("/api/qr/create", (req, res) => {
       client_timestamp,
     } = req.body;
 
-    const authoritativeCreatedAt = Date.now();
+    const authoritativeCreatedAt = Number(client_timestamp) || Date.now();
 
-    // Check if record exists
-    let record = qrScans.find((r) => short_ref && r.short_ref === short_ref);
+    // Check if record exists by short_ref
+    let record = qrScans.find(
+      (r) => short_ref && r.short_ref && r.short_ref.toLowerCase() === String(short_ref).toLowerCase()
+    );
     if (!record) {
       record = {
         id: crypto.randomUUID(),
@@ -964,16 +988,23 @@ app.post("/api/qr/create", (req, res) => {
         updated_at: authoritativeCreatedAt,
       };
       qrScans.push(record);
-      saveQRScans();
-
-      logActivityEvent({
-        type: "QR_CREATED",
-        title: "Evacuation Pass Issued",
-        description: `Pass issued for ${record.head_name} (${record.short_ref}, ${record.total_members} members) destined for ${record.shelter_id}`,
-        short_ref: record.short_ref,
-        head_name: record.head_name,
-      });
+    } else {
+      record.head_name = head_name || record.head_name;
+      record.hamlet_name = hamlet_name || record.hamlet_name;
+      record.shelter_id = shelter_id || record.shelter_id;
+      record.total_members = Number(total_members) || record.total_members;
+      record.qr_created_at = authoritativeCreatedAt;
+      record.updated_at = Date.now();
     }
+    saveQRScans();
+
+    logActivityEvent({
+      type: "QR_CREATED",
+      title: "Evacuation Pass Issued",
+      description: `Pass issued for ${record.head_name} (${record.short_ref}, ${record.total_members} members) destined for ${record.shelter_id}`,
+      short_ref: record.short_ref,
+      head_name: record.head_name,
+    });
 
     res.json({
       success: true,
@@ -988,10 +1019,11 @@ app.post("/api/qr/create", (req, res) => {
 
 /**
  * Authoritative QR Pass Scan & Shelter Arrival Endpoint
- * - Creates authoritative qr_scanned_at timestamp at the moment of scan
- * - Calculates arrival_duration_seconds = qr_scanned_at - qr_created_at
+ * - Creates authoritative qr_scanned_at timestamp at the exact actual moment of scan
+ * - Extracts and respects the actual optical QR creation timestamp
+ * - Accurately calculates arrival_duration_seconds = qr_scanned_at - qr_created_at
  * - Permanently persists created_at, scanned_at, duration, and status in database
- * - PREVENTS DUPLICATE SCANS: If already scanned, preserves original qr_scanned_at & duration
+ * - Unique lookup by short_ref token (not generic head_name)
  */
 app.post("/api/qr/scan", (req, res) => {
   try {
@@ -1025,73 +1057,39 @@ app.post("/api/qr/scan", (req, res) => {
       return res.status(400).json({ error: "Missing required short_ref or head_name" });
     }
 
-    // Lookup existing record: prioritize short_ref as the primary pass identifier
+    // Lookup existing record strictly by unique short_ref pass token (NOT by generic head_name)
     let record = null;
     if (short_ref) {
       const cleanRef = String(short_ref).trim().toLowerCase();
       record = qrScans.find((r) => r.short_ref && r.short_ref.toLowerCase() === cleanRef);
     }
-    if (!record && head_name) {
-      const cleanHead = String(head_name).trim().toLowerCase();
-      record = qrScans.slice().reverse().find(
-        (r) => r.head_name && r.head_name.toLowerCase().trim() === cleanHead
-      );
-    }
 
-    // RULE 9: PREVENT DUPLICATE SCANS
-    // If the record exists AND already has qr_scanned_at, do NOT overwrite it!
-    if (record && record.qr_scanned_at) {
-      record.scan_count = (record.scan_count || 1) + 1;
-      record.last_scanned_at = serverNow;
-      saveQRScans();
+    // Determine the actual creation time from the optical QR pass
+    const parsedPayloadCreated = payloadCreatedAt ? Number(payloadCreatedAt) : null;
+    const actualCreatedAt =
+      parsedPayloadCreated && !isNaN(parsedPayloadCreated) && parsedPayloadCreated > 0
+        ? parsedPayloadCreated
+        : (record && record.qr_created_at ? record.qr_created_at : serverNow);
 
-      logActivityEvent({
-        type: "QR_SCAN_SUCCESS",
-        title: "QR Pass Re-Scanned",
-        description: `Pass ${record.short_ref} (${record.head_name}) verified again at gate. Total Scans: ${record.scan_count}.`,
-        short_ref: record.short_ref,
-        head_name: record.head_name,
-      });
-
-      return res.json({
-        success: true,
-        duplicate: true,
-        message: "Pass already scanned. Original official arrival time retained.",
-        short_ref: record.short_ref,
-        head_name: record.head_name,
-        hamlet_name: record.hamlet_name,
-        shelter_id: record.shelter_id,
-        total_members: record.total_members,
-        qr_created_at: record.qr_created_at,
-        qr_scanned_at: record.qr_scanned_at,
-        arrival_duration_seconds: record.arrival_duration_seconds,
-        status: "REACHED_SHELTER",
-        scan_count: record.scan_count,
-        first_scanned_at: record.first_scanned_at || record.qr_scanned_at,
-      });
-    }
-
-    // FIRST AUTHORITATIVE SCAN
-    // Determine authoritative creation time
-    const effectiveCreatedAt =
-      (record && record.qr_created_at) ||
-      (payloadCreatedAt ? Number(payloadCreatedAt) : null) ||
-      (serverNow - 7 * 60 * 1000 - 35 * 1000); // 7m 35s default fallback if untracked
-
-    const authoritativeScannedAt = serverNow;
+    // Exact actual scan time is right now
+    const actualScannedAt = serverNow;
     const durationSeconds = Math.max(
       0,
-      Math.floor((authoritativeScannedAt - effectiveCreatedAt) / 1000)
+      Math.floor((actualScannedAt - actualCreatedAt) / 1000)
     );
 
+    const isDuplicate = Boolean(record && record.qr_scanned_at);
+
     if (record) {
-      record.qr_created_at = effectiveCreatedAt;
-      record.qr_scanned_at = authoritativeScannedAt;
+      record.scan_count = (record.scan_count || 1) + (record.qr_scanned_at ? 1 : 0);
+      if (!record.first_scanned_at) {
+        record.first_scanned_at = record.qr_scanned_at || actualScannedAt;
+      }
+      record.last_scanned_at = actualScannedAt;
+      record.qr_created_at = actualCreatedAt;
+      record.qr_scanned_at = actualScannedAt;
       record.arrival_duration_seconds = durationSeconds;
       record.status = "REACHED_SHELTER";
-      record.scan_count = 1;
-      record.first_scanned_at = authoritativeScannedAt;
-      record.last_scanned_at = authoritativeScannedAt;
       record.updated_at = serverNow;
     } else {
       record = {
@@ -1101,14 +1099,14 @@ app.post("/api/qr/scan", (req, res) => {
         hamlet_name: hamlet_name || "Coastal Hamlet",
         shelter_id: shelter_id || "OD-KEN-RAJ-001",
         total_members: Number(total_members) || 1,
-        qr_created_at: effectiveCreatedAt,
-        qr_scanned_at: authoritativeScannedAt,
+        qr_created_at: actualCreatedAt,
+        qr_scanned_at: actualScannedAt,
         arrival_duration_seconds: durationSeconds,
         status: "REACHED_SHELTER",
         scan_count: 1,
-        first_scanned_at: authoritativeScannedAt,
-        last_scanned_at: authoritativeScannedAt,
-        created_at: effectiveCreatedAt,
+        first_scanned_at: actualScannedAt,
+        last_scanned_at: actualScannedAt,
+        created_at: actualCreatedAt,
         updated_at: serverNow,
       };
       qrScans.push(record);
@@ -1118,8 +1116,8 @@ app.post("/api/qr/scan", (req, res) => {
 
     logActivityEvent({
       type: "SHELTER_ARRIVAL",
-      title: "Citizen Reached Shelter",
-      description: `✓ ${record.head_name} & family (${record.total_members} persons) reached ${record.shelter_id} in ${formatDuration(durationSeconds)}.`,
+      title: isDuplicate ? "QR Pass Re-Scanned at Gate" : "Citizen Reached Shelter",
+      description: `✓ ${record.head_name} (${record.short_ref}, ${record.total_members} persons) scanned at ${record.shelter_id} in ${formatDuration(durationSeconds)}.`,
       short_ref: record.short_ref,
       head_name: record.head_name,
       duration_seconds: durationSeconds,
@@ -1127,8 +1125,10 @@ app.post("/api/qr/scan", (req, res) => {
 
     res.json({
       success: true,
-      duplicate: false,
-      message: "Arrival successfully verified and recorded at shelter gate.",
+      duplicate: isDuplicate,
+      message: isDuplicate
+        ? `Pass re-scanned (Scan #${record.scan_count}). Actual scan time updated.`
+        : "Arrival successfully verified and recorded at shelter gate.",
       short_ref: record.short_ref,
       head_name: record.head_name,
       hamlet_name: record.hamlet_name,
@@ -1138,7 +1138,9 @@ app.post("/api/qr/scan", (req, res) => {
       qr_scanned_at: record.qr_scanned_at,
       arrival_duration_seconds: record.arrival_duration_seconds,
       status: "REACHED_SHELTER",
-      scan_count: 1,
+      scan_count: record.scan_count,
+      first_scanned_at: record.first_scanned_at,
+      last_scanned_at: record.last_scanned_at,
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to process QR scan", details: err.message });
@@ -1154,16 +1156,12 @@ app.get("/api/qr/status/:short_ref", (req, res) => {
 
   let record = null;
   if (target === "latest") {
-    // Return the most recent scanned evacuation pass
-    record =
-      qrScans.slice().reverse().find((r) => r.qr_scanned_at) ||
-      qrScans[qrScans.length - 1];
+    record = qrScans.slice().reverse().find((r) => r.qr_scanned_at);
   } else {
     record = qrScans.find(
       (r) =>
         (r.short_ref && r.short_ref.toLowerCase() === target) ||
-        (r.id && r.id.toLowerCase() === target) ||
-        (r.head_name && r.head_name.toLowerCase().trim() === target)
+        (r.id && r.id.toLowerCase() === target)
     );
   }
 

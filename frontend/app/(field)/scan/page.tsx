@@ -22,6 +22,9 @@ import {
   AlertCircle,
   Sparkles,
   Lock,
+  ImageIcon,
+  CheckCircle2,
+  Check,
 } from "lucide-react";
 import {
   Html5Qrcode,
@@ -44,30 +47,52 @@ import {
 import { translations, type Language } from "@/lib/locales/translations";
 
 /**
+/**
+ * Resolves the dynamic local system time zone of the user's browser
+ */
+function getLocalTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
+  } catch {
+    return "Asia/Kolkata";
+  }
+}
+
+/**
+ * Returns human-friendly abbreviation for the local time zone (e.g. IST (GMT+5:30))
+ */
+function getTimeZoneAbbreviation(tz: string, d: Date = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      timeZoneName: "short",
+    }).formatToParts(d);
+    const val = parts.find((p) => p.type === "timeZoneName")?.value;
+    if (val) {
+      if (val === "GMT+5:30" || val === "UTC+5:30") return "IST (GMT+5:30)";
+      return val;
+    }
+  } catch { }
+  return tz === "Asia/Kolkata" || tz === "Asia/Calcutta" ? "IST (GMT+5:30)" : tz;
+}
+
+/**
  * Format any timestamp or date into the user's detected local time zone
  */
 function formatTimestamp(
   dateVal: number | string | Date | undefined | null,
-  targetTimeZone = "Asia/Kolkata",
+  targetTimeZone?: string,
   includeSeconds = true
 ): string {
   if (!dateVal) return "N/A";
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return "Invalid Date";
-
-    let tzShort = "";
-    try {
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: targetTimeZone,
-        timeZoneName: "short",
-      }).formatToParts(d);
-      tzShort =
-        parts.find((p) => p.type === "timeZoneName")?.value || targetTimeZone;
-    } catch {}
+    const tz = targetTimeZone || getLocalTimeZone();
+    const tzShort = getTimeZoneAbbreviation(tz, d);
 
     const formatted = d.toLocaleString("en-IN", {
-      timeZone: targetTimeZone,
+      timeZone: tz,
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -88,25 +113,17 @@ function formatTimestamp(
  */
 function formatTimeOnly(
   dateVal: number | string | Date | undefined | null,
-  targetTimeZone = "Asia/Kolkata"
+  targetTimeZone?: string
 ): string {
   if (!dateVal) return "N/A";
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return "Invalid Time";
-
-    let tzShort = "";
-    try {
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: targetTimeZone,
-        timeZoneName: "short",
-      }).formatToParts(d);
-      tzShort =
-        parts.find((p) => p.type === "timeZoneName")?.value || targetTimeZone;
-    } catch {}
+    const tz = targetTimeZone || getLocalTimeZone();
+    const tzShort = getTimeZoneAbbreviation(tz, d);
 
     const formatted = d.toLocaleTimeString("en-IN", {
-      timeZone: targetTimeZone,
+      timeZone: tz,
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -120,18 +137,19 @@ function formatTimeOnly(
 }
 
 /**
- * Format timestamp as exact hh:mm:ss A (e.g. 04:00:00 PM)
+ * Format timestamp as exact hh:mm:ss A (e.g. 04:00:00 PM) linked to local time zone
  */
 function formatClockTime(
   dateVal: number | string | Date | undefined | null,
-  targetTimeZone = "Asia/Kolkata"
+  targetTimeZone?: string
 ): string {
   if (!dateVal) return "N/A";
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return "N/A";
+    const tz = targetTimeZone || getLocalTimeZone();
     return d.toLocaleTimeString("en-US", {
-      timeZone: targetTimeZone,
+      timeZone: tz,
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -184,9 +202,22 @@ export default function ScanPage() {
   // Authoritative QR Timing & Arrival Audit State
   const [scanAuditRecord, setScanAuditRecord] = useState<ScanAuditRecord | null>(null);
 
-  // Auto-Detected Timezone State
-  const [detectedTimeZone, setDetectedTimeZone] = useState<string>("Asia/Kolkata");
-  const [timeZoneShort, setTimeZoneShort] = useState<string>("IST");
+  // Auto-Detected Timezone State (Linked to user's local device/browser timezone)
+  const [detectedTimeZone, setDetectedTimeZone] = useState<string>(() => {
+    try {
+      return getLocalTimeZone();
+    } catch {
+      return "Asia/Kolkata";
+    }
+  });
+  const [timeZoneShort, setTimeZoneShort] = useState<string>(() => {
+    try {
+      const tz = getLocalTimeZone();
+      return getTimeZoneAbbreviation(tz);
+    } catch {
+      return "IST (GMT+5:30)";
+    }
+  });
 
   // Accurate Scan Time Lock Tracking (Clock & Timer stop when QR is scanned!)
   const [isClockRunning, setIsClockRunning] = useState<boolean>(true);
@@ -220,64 +251,71 @@ export default function ScanPage() {
   const lastProcessedCodeRef = useRef<string | null>(null);
   const lastProcessedAtRef = useRef<number>(0);
 
-  // Auto-Detect System Timezone and Authoritatively Hydrate Frozen Record from Backend on Refresh (Rule 3 & 8)
+  // Modern Drag & Drop / Pass Photo Upload State
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isScanningImage, setIsScanningImage] = useState<boolean>(false);
+  const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
+  const [uploadSuccessMessage, setUploadSuccessMessage] = useState<string | null>(null);
+  const dragCounterRef = useRef<number>(0);
+  const isProcessingUploadRef = useRef<boolean>(false);
+  const lastUploadedFileRef = useRef<{
+    name: string;
+    size: number;
+    lastModified: number;
+    time: number;
+  } | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
+  // Auto-Detect System Timezone and Authoritatively Hydrate Frozen Record from Active Session (Rule 3 & 8)
   useEffect(() => {
     try {
-      const tz =
-        Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
+      const tz = getLocalTimeZone();
       setDetectedTimeZone(tz);
-
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: tz,
-        timeZoneName: "short",
-      }).formatToParts(new Date());
-      const shortCode =
-        parts.find((p) => p.type === "timeZoneName")?.value || tz;
-      setTimeZoneShort(shortCode);
+      setTimeZoneShort(getTimeZoneAbbreviation(tz));
     } catch {
       setDetectedTimeZone("Asia/Kolkata");
-      setTimeZoneShort("IST");
+      setTimeZoneShort("IST (GMT+5:30)");
     }
 
-    // Rule 3 & 8: If page is refreshed after scan, retrieve the authoritative stored record from backend
-    // and display the SAME frozen duration. Never restart timer after a successful scan.
+    // Clean up any stale localStorage items left by earlier runs so they do not pollute fresh scanner
+    try {
+      localStorage.removeItem("ashraysetu_last_scan_audit");
+      localStorage.removeItem("ashraysetu_last_scanned_result");
+      localStorage.removeItem("ashraysetu_last_scanned_ref");
+    } catch { }
+
+    // Rule 3 & 8: If page is refreshed after scan, retrieve the authoritative stored record
+    // from this active browser session and display the SAME frozen duration.
     async function restoreFromBackendOrStorage() {
       try {
+        const lastShortRef = sessionStorage.getItem("ashraysetu_last_scanned_ref");
+        const auditStr = sessionStorage.getItem("ashraysetu_last_scan_audit");
+        const resultStr = sessionStorage.getItem("ashraysetu_last_scanned_result");
+
+        // If no active scan in this session, stay clean and ready for scanning
+        if (!lastShortRef && !auditStr) {
+          return;
+        }
+
         let savedAudit: ScanAuditRecord | null = null;
         let savedResult: QRPayloadData | null = null;
-        let lastShortRef: string | null = null;
 
-        const auditStr =
-          sessionStorage.getItem("ashraysetu_last_scan_audit") ||
-          localStorage.getItem("ashraysetu_last_scan_audit");
         if (auditStr) {
           try {
             savedAudit = JSON.parse(auditStr);
-          } catch {}
+          } catch { }
         }
-
-        const resultStr =
-          sessionStorage.getItem("ashraysetu_last_scanned_result") ||
-          localStorage.getItem("ashraysetu_last_scanned_result");
         if (resultStr) {
           try {
             savedResult = JSON.parse(resultStr);
-          } catch {}
+          } catch { }
         }
 
-        lastShortRef =
-          sessionStorage.getItem("ashraysetu_last_scanned_ref") ||
-          localStorage.getItem("ashraysetu_last_scanned_ref") ||
-          savedAudit?.short_ref ||
-          savedResult?.shortRef ||
-          null;
-
-        if (lastShortRef || savedAudit) {
+        if (lastShortRef) {
           let backendRecord: any = null;
-          const refToFetch = lastShortRef || "latest";
-
           try {
-            const res = await fetch(`/api/qr/status/${encodeURIComponent(refToFetch)}`);
+            const res = await fetch(`/api/qr/status/${encodeURIComponent(lastShortRef)}`);
             if (res.ok) {
               const data = await res.json();
               if (data.found && data.record && data.record.qr_scanned_at) {
@@ -285,26 +323,29 @@ export default function ScanPage() {
               }
             }
           } catch (e) {
-            console.warn("Backend status lookup offline or failed, using local storage", e);
+            console.warn("Backend status lookup offline or failed, using local session audit", e);
           }
 
           const record = backendRecord || savedAudit;
           if (record && record.qr_scanned_at) {
+            const actualCreated =
+              (savedResult?.createdAt && savedResult.createdAt > 0)
+                ? Number(savedResult.createdAt)
+                : Number(record.qr_created_at) || Number(record.qr_scanned_at);
+            const actualScanned = Number(record.qr_scanned_at);
             const durationSec = Number(
               record.arrival_duration_seconds != null
                 ? record.arrival_duration_seconds
                 : Math.max(
-                    0,
-                    Math.floor(
-                      (Number(record.qr_scanned_at) - Number(record.qr_created_at)) / 1000
-                    )
-                  )
+                  0,
+                  Math.floor((actualScanned - actualCreated) / 1000)
+                )
             );
 
             const audit: ScanAuditRecord = {
               short_ref: record.short_ref,
-              qr_created_at: Number(record.qr_created_at),
-              qr_scanned_at: Number(record.qr_scanned_at),
+              qr_created_at: actualCreated,
+              qr_scanned_at: actualScanned,
               arrival_duration_seconds: durationSec,
               status: record.status || "REACHED_SHELTER",
               duplicate: (record.scan_count || 1) > 1,
@@ -330,7 +371,7 @@ export default function ScanPage() {
               triageCode: "P3_STD",
               headName: record.head_name || "Evacuee Head",
               hamletName: record.hamlet_name || "Coastal Sector",
-              createdAt: audit.qr_created_at,
+              createdAt: actualCreated,
             };
             setScannedResult(populatedResult);
 
@@ -354,10 +395,10 @@ export default function ScanPage() {
                 (h) =>
                   h.id.startsWith(populatedResult.shortRef) ||
                   h.head_name.toLowerCase().trim() ===
-                    (populatedResult.headName || "").toLowerCase().trim()
+                  (populatedResult.headName || "").toLowerCase().trim()
               );
               setMatchedHousehold(matched || null);
-            } catch {}
+            } catch { }
           }
         }
       } catch (err) {
@@ -384,7 +425,7 @@ export default function ScanPage() {
           transitStart = ts;
         }
       }
-    } catch {}
+    } catch { }
 
     const updateClockAndTimer = () => {
       const now = new Date();
@@ -489,7 +530,7 @@ export default function ScanPage() {
       if (videoEl && "cancelVideoFrameCallback" in videoEl) {
         try {
           (videoEl as any).cancelVideoFrameCallback(frameCallbackIdRef.current);
-        } catch {}
+        } catch { }
       } else {
         cancelAnimationFrame(frameCallbackIdRef.current);
       }
@@ -593,7 +634,7 @@ export default function ScanPage() {
                 if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
                   html5QrCodeRef.current.pause(true);
                 }
-              } catch {}
+              } catch { }
 
               playScanBeep();
               handleProcessCode(rawText);
@@ -721,7 +762,7 @@ export default function ScanPage() {
           if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
             html5QrCodeRef.current.pause(true);
           }
-        } catch {}
+        } catch { }
 
         playScanBeep();
         handleProcessCode(text);
@@ -788,7 +829,7 @@ export default function ScanPage() {
         videoEl.style.display = "block";
         videoEl.style.backgroundColor = "transparent";
         if (videoEl.paused) {
-          videoEl.play().catch(() => {});
+          videoEl.play().catch(() => { });
         }
 
         // Start ultra-fast continuous camera-frame processing immediately
@@ -846,68 +887,191 @@ export default function ScanPage() {
     }
   };
 
-  // File Upload Pass Scanner
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Unified Pass Photo Processor (Used by Drag & Drop, File Picker, and Camera Viewport Drop)
+  const processUploadedFile = async (file: File) => {
     if (!file) return;
 
-    setErrorMessage(null);
-    try {
-      // 1. Check for Circular QR Pass
-      const circularResult = await detectCircularCodeFromFile(file);
-      if (circularResult) {
-        playScanBeep();
-        handleProcessCode(circularResult);
-        return;
-      }
+    // 1. Prevent duplicate processing of the exact same dropped file
+    if (isProcessingUploadRef.current) return;
 
-      // 2. Fall back to standard Html5Qrcode
-      const scanner = new Html5Qrcode("qr-hidden-file-sink");
-      try {
-        const result = await scanner.scanFile(file, true);
-        playScanBeep();
-        handleProcessCode(result);
-        return;
-      } catch {}
+    const last = lastUploadedFileRef.current;
+    const now = Date.now();
+    if (
+      last &&
+      last.name === file.name &&
+      last.size === file.size &&
+      last.lastModified === file.lastModified &&
+      now - last.time < 3000
+    ) {
+      return;
+    }
 
-      // 3. Resilient fallback: active session pass
-      const sessionPass = typeof window !== "undefined" ? localStorage.getItem("ashraysetu_last_qr_payload") : null;
-      if (sessionPass && sessionPass.includes("|")) {
-        playScanBeep();
-        handleProcessCode(sessionPass);
-        return;
-      }
+    lastUploadedFileRef.current = {
+      name: file.name,
+      size: file.size,
+      lastModified: file.lastModified,
+      time: now,
+    };
+    isProcessingUploadRef.current = true;
 
+    // 2. Validate common image formats: PNG, JPG, JPEG, and WEBP
+    const validMimes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    const validExt = /\.(png|jpe?g|webp)$/i.test(file.name);
+    if (!validMimes.includes(file.type.toLowerCase()) && !validExt) {
       setErrorMessage(
-        "No valid QR code pass detected in the selected image file."
+        "Unsupported format. Please upload an image file (PNG, JPG, JPEG, or WEBP)."
       );
+      setUploadSuccessMessage(null);
+      isProcessingUploadRef.current = false;
+      return;
+    }
+
+    setErrorMessage(null);
+    setUploadSuccessMessage(null);
+    setIsScanningImage(true);
+    setUploadedFileName(file.name);
+
+    // 3. Show preview of the uploaded image immediately while processing
+    if (previewUrlRef.current) {
+      try {
+        URL.revokeObjectURL(previewUrlRef.current);
+      } catch { }
+    }
+    const previewUrl = URL.createObjectURL(file);
+    previewUrlRef.current = previewUrl;
+    setUploadedImagePreview(previewUrl);
+
+    try {
+      // Step 1: Detect circular or standard optical QR pass (PNG chunk, BarcodeDetector, multi-scale jsQR, watermark)
+      let rawResult = await detectCircularCodeFromFile(file);
+
+      // Step 2: Fall back to standard Html5Qrcode if needed
+      if (!rawResult) {
+        try {
+          const scanner = new Html5Qrcode("qr-hidden-file-sink");
+          rawResult = await scanner.scanFile(file, true);
+          try {
+            await scanner.clear();
+          } catch { }
+        } catch {
+          // Html5Qrcode failed to detect
+        }
+      }
+
+      if (rawResult && rawResult.trim().includes("|")) {
+        const cleanRaw = rawResult.trim();
+        playScanBeep();
+        const decoded = decodeQRPayload(cleanRaw);
+        if (decoded) {
+          setUploadSuccessMessage(
+            `✓ Pass #${decoded.shortRef.toUpperCase()} detected successfully!`
+          );
+        } else {
+          setUploadSuccessMessage("✓ QR code pass detected successfully!");
+        }
+
+        // Pause camera continuous scanning if running to prevent conflicting reads
+        if (isCameraActive) {
+          stopContinuousScan();
+          try {
+            if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+              html5QrCodeRef.current.pause(true);
+            }
+          } catch { }
+        }
+
+        // Full authoritative backend validation, timestamp recording, timer freeze
+        await handleProcessCode(cleanRaw);
+      } else {
+        setErrorMessage(
+          "No valid QR code pass detected in the selected image file."
+        );
+        setUploadSuccessMessage(null);
+      }
     } catch (err: any) {
       setErrorMessage(
         "No valid QR code pass detected in the selected image file."
       );
+      setUploadSuccessMessage(null);
     } finally {
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setIsScanningImage(false);
+      isProcessingUploadRef.current = false;
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
-  // Clean up camera on unmount
+  // File Upload via Input Trigger
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file);
+    }
+  };
+
+  // Drag and Drop Event Handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      processUploadedFile(files[0]);
+    }
+  };
+
+  // Clean up camera and object URLs on unmount
   useEffect(() => {
     return () => {
       stopContinuousScan();
       if (html5QrCodeRef.current) {
         try {
           if (html5QrCodeRef.current.isScanning) {
-            html5QrCodeRef.current.stop().catch(() => {});
+            html5QrCodeRef.current.stop().catch(() => { });
           }
           html5QrCodeRef.current.clear();
-        } catch {}
+        } catch { }
+      }
+      if (previewUrlRef.current) {
+        try {
+          URL.revokeObjectURL(previewUrlRef.current);
+        } catch { }
       }
     };
   }, []);
 
   // Process & Retrieve Household Intake Details + STOP TIME FOR ACCURATE RECORD
   const handleProcessCode = async (codeText: string) => {
-    // 1. FREEZE AND STOP TIME AT THE EXACT SECOND OF SCAN! (Rule 3 & 8)
+    // 1. FREEZE AND STOP TIME AT THE EXACT SECOND OF SCAN!
     setIsClockRunning(false);
     const scanMoment = Date.now();
     setScannedAtTimestamp(scanMoment);
@@ -931,7 +1095,7 @@ export default function ScanPage() {
 
     setScannedResult(decoded);
 
-    // 2. Authoritative Backend QR Scan Record (Rule 2 & Rule 6: Backend authoritative timestamp)
+    // 2. Authoritative Backend QR Scan Record
     let backendScan: any = null;
     try {
       const res = await fetch("/api/qr/scan", {
@@ -944,6 +1108,7 @@ export default function ScanPage() {
           shelter_id: selectedShelterId,
           total_members: decoded.totalMembers,
           qr_created_at: decoded.createdAt,
+          qr_payload: codeText.trim(),
         }),
       });
       if (res.ok) {
@@ -953,12 +1118,16 @@ export default function ScanPage() {
       console.warn("Backend /api/qr/scan offline or error, falling back locally", e);
     }
 
-    const authoritativeScannedAt = backendScan?.qr_scanned_at || scanMoment;
+    // Optical QR pass creation timestamp (ground truth from encoded pass)
     const authoritativeCreatedAt =
-      backendScan?.qr_created_at ||
-      decoded.createdAt ||
-      (authoritativeScannedAt - (7 * 60 + 35) * 1000);
+      decoded.createdAt && decoded.createdAt > 0
+        ? decoded.createdAt
+        : backendScan?.qr_created_at || scanMoment;
 
+    // Exact actual scan instant
+    const authoritativeScannedAt = backendScan?.qr_scanned_at || scanMoment;
+
+    // Actual duration taken to reach shelter
     const arrivalSeconds =
       backendScan?.arrival_duration_seconds != null
         ? backendScan.arrival_duration_seconds
@@ -980,12 +1149,9 @@ export default function ScanPage() {
 
     try {
       sessionStorage.setItem("ashraysetu_last_scan_audit", JSON.stringify(audit));
-      localStorage.setItem("ashraysetu_last_scan_audit", JSON.stringify(audit));
       sessionStorage.setItem("ashraysetu_last_scanned_result", JSON.stringify(decoded));
-      localStorage.setItem("ashraysetu_last_scanned_result", JSON.stringify(decoded));
       sessionStorage.setItem("ashraysetu_last_scanned_ref", decoded.shortRef);
-      localStorage.setItem("ashraysetu_last_scanned_ref", decoded.shortRef);
-    } catch {}
+    } catch { }
 
     // Freeze display clock at this exact authoritative second
     const frozenString = new Date(authoritativeScannedAt).toLocaleString("en-IN", {
@@ -1008,7 +1174,7 @@ export default function ScanPage() {
         (h) =>
           h.id.startsWith(decoded.shortRef) ||
           h.head_name.toLowerCase().trim() ===
-            (decoded.headName || "").toLowerCase().trim()
+          (decoded.headName || "").toLowerCase().trim()
       );
       setMatchedHousehold(household || null);
 
@@ -1026,35 +1192,16 @@ export default function ScanPage() {
         setMatchedTriage(triage || null);
       }
 
-      // Check if already admitted to this shelter
+      // Check if already admitted to this shelter - strictly by unique household_token
       const existing = await db.admissions
         .where("shelter_id")
         .equals(selectedShelterId)
-        .and(
-          (adm) =>
-            adm.household_token === decoded.shortRef ||
-            adm.head_name === decoded.headName
-        )
+        .and((adm) => adm.household_token === decoded.shortRef)
         .first();
 
       setExistingAdmission(existing || null);
       if (existing) {
         setIsAdmitted(true);
-        // If already admitted, retain the exact original arrival time and duration (Rule 8 & 9)
-        if (existing.qr_scanned_at && existing.qr_created_at) {
-          const retainedAudit: ScanAuditRecord = {
-            short_ref: existing.household_token,
-            qr_created_at: existing.qr_created_at,
-            qr_scanned_at: existing.qr_scanned_at,
-            arrival_duration_seconds:
-              existing.arrival_duration_seconds ??
-              Math.max(0, Math.floor((existing.qr_scanned_at - existing.qr_created_at) / 1000)),
-            status: existing.status || "REACHED_SHELTER",
-            duplicate: true,
-          };
-          setScanAuditRecord(retainedAudit);
-          setScannedAtTimestamp(existing.qr_scanned_at);
-        }
       }
     } catch (err) {
       console.error("Dexie lookup error:", err);
@@ -1072,6 +1219,16 @@ export default function ScanPage() {
     setScannedAtTimestamp(null);
     setScanAuditRecord(null);
     setElapsedTimerSeconds(0);
+    setUploadedImagePreview(null);
+    setUploadedFileName("");
+    setUploadSuccessMessage(null);
+    lastUploadedFileRef.current = null;
+    if (previewUrlRef.current) {
+      try {
+        URL.revokeObjectURL(previewUrlRef.current);
+      } catch { }
+      previewUrlRef.current = null;
+    }
     try {
       sessionStorage.removeItem("ashraysetu_last_scan_audit");
       localStorage.removeItem("ashraysetu_last_scan_audit");
@@ -1079,7 +1236,7 @@ export default function ScanPage() {
       localStorage.removeItem("ashraysetu_last_scanned_result");
       sessionStorage.removeItem("ashraysetu_last_scanned_ref");
       localStorage.removeItem("ashraysetu_last_scanned_ref");
-    } catch {}
+    } catch { }
     setIsClockRunning(true); // RESUME LIVE CLOCK!
 
     // Reset duplicate & scanning locks for next pass
@@ -1096,7 +1253,7 @@ export default function ScanPage() {
       ) {
         try {
           html5QrCodeRef.current.resume();
-        } catch {}
+        } catch { }
       }
       startContinuousScan();
     }
@@ -1154,10 +1311,10 @@ export default function ScanPage() {
           (scannedResult.triageCode.includes("PREG")
             ? "Maternity Care: Third trimester pregnancy triage flagged."
             : scannedResult.triageCode.includes("BED")
-            ? "Geriatric/Mobility: Bedridden patient requiring ground floor cot."
-            : scannedResult.triageCode.includes("CHRONIC")
-            ? "Chronic Medication: Insulin/dialysis maintenance flagged."
-            : undefined),
+              ? "Geriatric/Mobility: Bedridden patient requiring ground floor cot."
+              : scannedResult.triageCode.includes("CHRONIC")
+                ? "Chronic Medication: Insulin/dialysis maintenance flagged."
+                : undefined),
         ration_water_litres: scannedResult.totalMembers * 3.0,
         ration_food_packets: scannedResult.totalMembers * 2,
       };
@@ -1292,22 +1449,20 @@ export default function ScanPage() {
           <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
             <button
               onClick={() => setActiveTab("scanner")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                activeTab === "scanner"
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeTab === "scanner"
                   ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
                   : "text-slate-400 hover:text-white"
-              }`}
+                }`}
             >
               <Camera className="w-3.5 h-3.5" />
               <span>Camera Scanner</span>
             </button>
             <button
               onClick={() => setActiveTab("muster")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                activeTab === "muster"
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeTab === "muster"
                   ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
                   : "text-slate-400 hover:text-white"
-              }`}
+                }`}
             >
               <Users className="w-3.5 h-3.5" />
               <span>Who Entered ({admissions.length})</span>
@@ -1330,9 +1485,8 @@ export default function ScanPage() {
                   : "Scan Time (Locked & Frozen):"}
               </span>
               <span
-                className={`font-mono font-bold ${
-                  isClockRunning ? "text-emerald-300" : "text-amber-300"
-                }`}
+                className={`font-mono font-bold ${isClockRunning ? "text-emerald-300" : "text-amber-300"
+                  }`}
               >
                 {currentClockDisplay || "Detecting time..."}
               </span>
@@ -1344,11 +1498,10 @@ export default function ScanPage() {
                 {isClockRunning ? "Transit Timer:" : "Time Taken to Reach:"}
               </span>
               <span
-                className={`font-mono font-extrabold text-xs px-2.5 py-0.5 rounded-lg border ${
-                  isClockRunning
+                className={`font-mono font-extrabold text-xs px-2.5 py-0.5 rounded-lg border ${isClockRunning
                     ? "bg-sky-950/80 text-sky-300 border-sky-500/40 animate-pulse"
                     : "bg-emerald-950/90 text-emerald-300 border-emerald-500/40"
-                }`}
+                  }`}
               >
                 {scanAuditRecord
                   ? formatDuration(scanAuditRecord.arrival_duration_seconds)
@@ -1416,13 +1569,12 @@ export default function ScanPage() {
                   </span>
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
-                    occupancyPercent >= 90
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${occupancyPercent >= 90
                       ? "bg-red-500/20 text-red-400 border border-red-500/30"
                       : occupancyPercent >= 75
-                      ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                      : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                  }`}
+                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                        : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                    }`}
                 >
                   {occupancyPercent}% FULL
                 </span>
@@ -1432,13 +1584,12 @@ export default function ScanPage() {
             {/* Visual Progress Bar */}
             <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden relative">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  occupancyPercent >= 90
+                className={`h-full rounded-full transition-all duration-500 ${occupancyPercent >= 90
                     ? "bg-red-500 shadow-md shadow-red-500/50"
                     : occupancyPercent >= 75
-                    ? "bg-amber-500 shadow-md shadow-amber-500/50"
-                    : "bg-emerald-500 shadow-md shadow-emerald-500/50"
-                }`}
+                      ? "bg-amber-500 shadow-md shadow-amber-500/50"
+                      : "bg-emerald-500 shadow-md shadow-emerald-500/50"
+                  }`}
                 style={{ width: `${occupancyPercent}%` }}
               />
             </div>
@@ -1484,11 +1635,10 @@ export default function ScanPage() {
                   {hasTorch && (
                     <button
                       onClick={toggleTorch}
-                      className={`p-1.5 rounded-lg border text-xs transition ${
-                        torchOn
+                      className={`p-1.5 rounded-lg border text-xs transition ${torchOn
                           ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
                           : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
-                      }`}
+                        }`}
                       title="Toggle Flashlight / Torch"
                     >
                       <Flashlight className="w-3.5 h-3.5" />
@@ -1511,12 +1661,61 @@ export default function ScanPage() {
             </div>
 
             {/* FIXED CAMERA MOUNT VIEWPORT */}
-            <div className="relative w-full max-w-sm mx-auto aspect-square rounded-2xl bg-slate-950 border-2 border-slate-800 overflow-hidden shadow-2xl">
+            <div
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`relative w-full max-w-sm mx-auto aspect-square rounded-2xl bg-slate-950 border-2 transition-all duration-200 overflow-hidden shadow-2xl ${
+                isDragging
+                  ? "border-emerald-400 ring-4 ring-emerald-500/30 scale-[1.01]"
+                  : "border-slate-800"
+              }`}
+            >
               {/* Permanent Mount Element: Always rendered with fixed dimensions */}
               <div
                 id="qr-camera-viewport"
                 className="absolute inset-0 w-full h-full bg-black overflow-hidden flex items-center justify-center rounded-2xl"
               />
+
+              {/* DRAG-OVER HUD OVERLAY */}
+              {isDragging && (
+                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 bg-slate-950/90 border-2 border-emerald-400 rounded-2xl backdrop-blur-sm pointer-events-none space-y-2">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400 text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/30 animate-bounce">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                  </div>
+                  <div className="text-sm font-bold text-emerald-300 tracking-wide uppercase">
+                    ✓ DROP IMAGE TO SCAN
+                  </div>
+                  <p className="text-xs text-emerald-400/80 font-medium">
+                    Release to scan QR pass
+                  </p>
+                </div>
+              )}
+
+              {/* SCANNING UPLOADED IMAGE HUD */}
+              {isScanningImage && (
+                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 bg-slate-950/95 rounded-2xl backdrop-blur-sm pointer-events-none space-y-3">
+                  {uploadedImagePreview && (
+                    <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-sky-500/50 shadow-lg shadow-sky-500/20 bg-black">
+                      <img
+                        src={uploadedImagePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover opacity-80"
+                      />
+                      <div className="absolute inset-0 bg-sky-950/30" />
+                      <div className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-sky-400 to-transparent shadow-md shadow-sky-400 animate-scan-laser" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sky-400">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span className="text-sm font-bold">Scanning QR...</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Detecting QR code in uploaded image...
+                  </p>
+                </div>
+              )}
 
               {/* OVERLAY HUD WHEN CAMERA IS ACTIVE */}
               {isCameraActive && (
@@ -1574,24 +1773,53 @@ export default function ScanPage() {
                       )}
                     </button>
 
+                    {/* COMBINED DRAG & DROP + CLICK UPLOAD PASS PHOTO BUTTON */}
                     <button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition border border-slate-700 flex items-center justify-center gap-2"
+                      onDragEnter={handleDragEnter}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-semibold text-xs transition-all duration-150 border flex items-center justify-center gap-2 select-none ${
+                        isDragging
+                          ? "bg-emerald-950 border-emerald-400 text-emerald-300 ring-4 ring-emerald-500/40 scale-105 shadow-lg shadow-emerald-500/30"
+                          : isScanningImage
+                          ? "bg-sky-950/80 border-sky-500/50 text-sky-300 ring-2 ring-sky-500/20"
+                          : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 hover:border-slate-600"
+                      }`}
+                      title="Click to browse or drag & drop pass image here (PNG, JPG, JPEG, WEBP)"
                     >
-                      <Upload className="w-4 h-4 text-sky-400" />
-                      <span>Upload Pass Photo</span>
+                      {isDragging ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 animate-bounce" />
+                          <span className="font-bold text-emerald-300">Drop Image to Scan</span>
+                        </>
+                      ) : isScanningImage ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin text-sky-400" />
+                          <span>Scanning QR...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 text-sky-400" />
+                          <span>Upload Pass Photo</span>
+                        </>
+                      )}
                     </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Permanent hidden file input for all upload triggers */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
 
             {/* Camera Running Controls Bar */}
             {isCameraActive && (
@@ -1604,12 +1832,73 @@ export default function ScanPage() {
                   <span>Pause Camera</span>
                 </button>
 
+                {/* COMBINED DRAG & DROP UPLOAD BUTTON WHEN CAMERA RUNNING */}
                 <button
+                  type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs transition border border-slate-700 flex items-center gap-1.5"
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`px-3.5 py-2 rounded-xl text-xs transition-all duration-150 border flex items-center gap-1.5 select-none ${
+                    isDragging
+                      ? "bg-emerald-950 border-emerald-400 text-emerald-300 ring-4 ring-emerald-500/40 scale-105"
+                      : isScanningImage
+                      ? "bg-sky-950/80 border-sky-500/50 text-sky-300"
+                      : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border-slate-700 hover:border-slate-600"
+                  }`}
+                  title="Click to browse or drag & drop pass image here (PNG, JPG, JPEG, WEBP)"
                 >
-                  <Upload className="w-3.5 h-3.5 text-sky-400" />
-                  <span>Upload Image</span>
+                  {isDragging ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
+                      <span className="font-bold text-emerald-300">Drop Image to Scan</span>
+                    </>
+                  ) : isScanningImage ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                      <span>Scanning QR...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Upload Pass Photo</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Upload Success Notice */}
+            {uploadSuccessMessage && uploadedImagePreview && (
+              <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-emerald-500/50 bg-black shrink-0">
+                    <img
+                      src={uploadedImagePreview}
+                      alt="Scanned Pass"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-bold flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{uploadSuccessMessage}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate max-w-[200px]">
+                      {uploadedFileName || "Uploaded pass image"}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[11px] underline font-medium text-emerald-400 hover:text-white shrink-0"
+                >
+                  Upload another
                 </button>
               </div>
             )}
@@ -1856,10 +2145,10 @@ export default function ScanPage() {
                 {/* AUTHORITATIVE ARRIVAL TIME & DURATION AUDIT (EXACT SPEC MATCH) */}
                 {(() => {
                   const qrCreatedAt =
+                    scannedResult?.createdAt ||
                     scanAuditRecord?.qr_created_at ||
-                    scannedResult.createdAt ||
                     matchedHousehold?.registered_at ||
-                    (Date.now() - (7 * 60 + 35) * 1000);
+                    Date.now();
                   const qrScannedAt =
                     scanAuditRecord?.qr_scanned_at ||
                     scannedAtTimestamp ||
@@ -1873,13 +2162,18 @@ export default function ScanPage() {
                   return (
                     <div className="space-y-3 pt-3 border-t border-slate-800/80">
                       <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
-                        <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                          <Clock className="w-4 h-4 text-emerald-400" />
-                          <span>Official Shelter Arrival Time Record</span>
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                            <Clock className="w-4 h-4 text-emerald-400" />
+                            <span>Official Shelter Arrival Time Record</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-sky-400 bg-sky-950/80 px-2 py-0.5 rounded border border-sky-500/30">
+                            {detectedTimeZone} ({timeZoneShort})
+                          </span>
+                        </div>
                         {isDuplicate ? (
                           <span className="text-[10px] font-mono font-bold bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-500/40">
-                            ORIGINAL ARRIVAL RETAINED (Scan #{scanAuditRecord?.scan_count || 2})
+                            RE-SCANNED (Scan #{scanAuditRecord?.scan_count || 2})
                           </span>
                         ) : (
                           <span className="text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40">
@@ -1892,29 +2186,35 @@ export default function ScanPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* QR Created At */}
                         <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-                          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
-                            QR Created At
+                          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide flex items-center justify-between">
+                            <span>QR Created At</span>
+                            <span className="text-[10px] font-mono text-sky-400 font-normal">PASS TIMESTAMP</span>
                           </div>
                           <div className="text-xl font-mono font-black text-white mt-1">
                             {formatClockTime(qrCreatedAt, detectedTimeZone)}
                           </div>
                           <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
-                            <span>{formatTimestamp(qrCreatedAt, detectedTimeZone, false)}</span>
-                            <span className="text-sky-400 font-mono">SERVER RECORD</span>
+                            <span>{formatTimestamp(qrCreatedAt, detectedTimeZone, true)}</span>
+                            <span className="text-sky-400 font-mono text-[9px] bg-sky-950/70 px-1.5 py-0.5 rounded border border-sky-500/30">
+                              LOCAL TIME
+                            </span>
                           </div>
                         </div>
 
                         {/* QR Scanned At */}
                         <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-                          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
-                            QR Scanned At
+                          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide flex items-center justify-between">
+                            <span>QR Scanned At</span>
+                            <span className="text-[10px] font-mono text-emerald-400 font-normal">GATE SCAN</span>
                           </div>
                           <div className="text-xl font-mono font-black text-emerald-400 mt-1">
                             {formatClockTime(qrScannedAt, detectedTimeZone)}
                           </div>
                           <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
-                            <span>{formatTimestamp(qrScannedAt, detectedTimeZone, false)}</span>
-                            <span className="text-emerald-400 font-mono">SERVER RECORD</span>
+                            <span>{formatTimestamp(qrScannedAt, detectedTimeZone, true)}</span>
+                            <span className="text-emerald-400 font-mono text-[9px] bg-emerald-950/70 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                              LOCAL TIME
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -1929,7 +2229,7 @@ export default function ScanPage() {
                             {formatDuration(durationSeconds)}
                           </div>
                           <div className="text-[10px] text-slate-400 mt-1">
-                            Calculated: QR Scan Time ({formatClockTime(qrScannedAt, detectedTimeZone)}) − QR Creation Time ({formatClockTime(qrCreatedAt, detectedTimeZone)})
+                            Calculated: QR Scan Time ({formatClockTime(qrScannedAt, detectedTimeZone)}) − QR Creation Time ({formatClockTime(qrCreatedAt, detectedTimeZone)}) • {detectedTimeZone}
                           </div>
                         </div>
 
@@ -2016,11 +2316,10 @@ export default function ScanPage() {
                       <span>Infants &lt;5y</span>
                     </div>
                     <div
-                      className={`text-base font-bold mt-0.5 ${
-                        scannedResult.infantCount > 0
+                      className={`text-base font-bold mt-0.5 ${scannedResult.infantCount > 0
                           ? "text-pink-400"
                           : "text-slate-400"
-                      }`}
+                        }`}
                     >
                       {scannedResult.infantCount}
                     </div>
@@ -2032,11 +2331,10 @@ export default function ScanPage() {
                       <span>Elderly &gt;60y</span>
                     </div>
                     <div
-                      className={`text-base font-bold mt-0.5 ${
-                        scannedResult.elderlyCount > 0
+                      className={`text-base font-bold mt-0.5 ${scannedResult.elderlyCount > 0
                           ? "text-amber-400"
                           : "text-slate-400"
-                      }`}
+                        }`}
                     >
                       {scannedResult.elderlyCount}
                     </div>
@@ -2065,13 +2363,12 @@ export default function ScanPage() {
                   </div>
 
                   <span
-                    className={`px-2.5 py-0.5 rounded text-xs font-mono font-bold ${
-                      scannedResult.triageCode.startsWith("P1")
+                    className={`px-2.5 py-0.5 rounded text-xs font-mono font-bold ${scannedResult.triageCode.startsWith("P1")
                         ? "bg-red-500/20 text-red-400 border border-red-500/40"
                         : scannedResult.triageCode.startsWith("P2")
-                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                        : "bg-sky-500/20 text-sky-400 border border-sky-500/40"
-                    }`}
+                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                          : "bg-sky-500/20 text-sky-400 border border-sky-500/40"
+                      }`}
                   >
                     TRIAGE: {scannedResult.triageCode}
                   </span>
@@ -2093,12 +2390,12 @@ export default function ScanPage() {
                       (scannedResult.triageCode.includes("PREG")
                         ? "High-Risk Pregnancy: Third-trimester expectant mother. Direct to Ground-Floor Wing A (Maternity & Special Care Bay). Provide clean bedroll and notify on-duty ANM nurse."
                         : scannedResult.triageCode.includes("BED")
-                        ? "Bedridden / Mobility Impaired: Non-ambulatory senior. Requires stretcher ramp access and quiet corner ground-floor cot with continuous caregiver."
-                        : scannedResult.triageCode.includes("CHRONIC")
-                        ? "Chronic Medical Dependency: Patient requires cold-pack refrigerated storage for insulin vials and daily blood pressure/sugar check."
-                        : scannedResult.triageCode.includes("INF")
-                        ? "Infant Care: Infant under 1 year. Disinfect infant formula utensils; allocate private nursing space and oral rehydration salts."
-                        : "Standard Refuge: No acute medical emergency reported during intake. Allotted to general communal shelter hall.")}
+                          ? "Bedridden / Mobility Impaired: Non-ambulatory senior. Requires stretcher ramp access and quiet corner ground-floor cot with continuous caregiver."
+                          : scannedResult.triageCode.includes("CHRONIC")
+                            ? "Chronic Medical Dependency: Patient requires cold-pack refrigerated storage for insulin vials and daily blood pressure/sugar check."
+                            : scannedResult.triageCode.includes("INF")
+                              ? "Infant Care: Infant under 1 year. Disinfect infant formula utensils; allocate private nursing space and oral rehydration salts."
+                              : "Standard Refuge: No acute medical emergency reported during intake. Allotted to general communal shelter hall.")}
                   </p>
 
                   <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
@@ -2247,13 +2544,13 @@ export default function ScanPage() {
                       <strong className="text-white font-mono">
                         {existingAdmission
                           ? formatTimestamp(
-                              existingAdmission.admitted_at,
-                              detectedTimeZone
-                            )
+                            existingAdmission.admitted_at,
+                            detectedTimeZone
+                          )
                           : formatTimestamp(
-                              scannedAtTimestamp || Date.now(),
-                              detectedTimeZone
-                            )}
+                            scannedAtTimestamp || Date.now(),
+                            detectedTimeZone
+                          )}
                       </strong>
                       .
                     </p>
@@ -2392,13 +2689,12 @@ export default function ScanPage() {
                         #{adm.household_token.toUpperCase()}
                       </span>
                       <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                          adm.triage_level === "P1_CRITICAL"
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${adm.triage_level === "P1_CRITICAL"
                             ? "bg-red-500/20 text-red-400 border border-red-500/30"
                             : adm.triage_level === "P2_URGENT"
-                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                            : "bg-sky-500/20 text-sky-400 border border-sky-500/30"
-                        }`}
+                              ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                              : "bg-sky-500/20 text-sky-400 border border-sky-500/30"
+                          }`}
                       >
                         {adm.triage_code}
                       </span>

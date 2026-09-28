@@ -429,12 +429,17 @@ export function decodeCircularQRWithDecoder(
 }
 
 /**
- * Reads a circular pass from an uploaded File or Image element
- * Execution order:
- * 1. Direct PNG tEXt metadata chunk (lossless, <0.1ms)
- * 2. Direct optical jsQR decode (full image and scaled crop)
- * 3. Opaque pixel LSB watermark
- * 4. Active session pass fallback
+ * Reads a circular or standard optical QR pass from an uploaded File (PNG, JPG, JPEG, WEBP)
+ * Execution pipeline:
+ * 1. Direct PNG tEXt metadata chunk (lossless PNG, <0.1ms)
+ * 2. Hardware BarcodeDetector API (if available in browser, ultra-fast & resilient)
+ * 3. Multi-resolution optical jsQR decode:
+ *    - Automatically resizes large images (e.g. smartphone 4000x3000 photos)
+ *      to optimal decoding dimensions (max dimension 1200px)
+ *    - Center crop fallback (if pass is centered in image)
+ *    - Original resolution fallback (if under 2048px)
+ * 4. Opaque pixel LSB watermark (for uncompressed PNG passes)
+ * 5. Returns null if no valid QR payload is detected (never bypasses decoder with fake pass).
  */
 export async function detectCircularCodeFromFile(file: File): Promise<string | null> {
   // Tier 1: Check raw binary ArrayBuffer for embedded PNG chunk
@@ -446,60 +451,144 @@ export async function detectCircularCodeFromFile(file: File): Promise<string | n
     }
   } catch {}
 
-  // Tier 2: Canvas-based direct jsQR decode
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
+  // Tier 2: Check native hardware BarcodeDetector if available
+  if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+    try {
+      const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+      let imgSource: any = null;
+      if (typeof createImageBitmap === "function") {
         try {
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext("2d", { willReadFrequently: true });
-          if (!ctx) {
-            resolve(fallbackSessionPass());
-            return;
+          imgSource = await createImageBitmap(file);
+        } catch {}
+      }
+      if (imgSource) {
+        const barcodes = await detector.detect(imgSource);
+        if (typeof imgSource.close === "function") imgSource.close();
+        if (barcodes && barcodes.length > 0) {
+          for (const b of barcodes) {
+            if (b.rawValue && b.rawValue.trim().includes("|")) {
+              return b.rawValue.trim();
+            }
           }
-          ctx.drawImage(img, 0, 0);
+        }
+      }
+    } catch {
+      // Continue to canvas-based optical decode
+    }
+  }
 
-          const fullImgData = ctx.getImageData(0, 0, img.width, img.height);
-          const direct = jsQR(fullImgData.data, img.width, img.height, {
+  // Tier 3: Canvas-based optical decode with smart resizing for large images
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      try {
+        const origW = img.naturalWidth || img.width;
+        const origH = img.naturalHeight || img.height;
+        if (!origW || !origH) {
+          resolve(null);
+          return;
+        }
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+
+        // Pass 3A: If image is large (> 1200px), resize smoothly to max 1200px
+        const maxDim = Math.max(origW, origH);
+        let scale = 1;
+        if (maxDim > 1200) {
+          scale = 1200 / maxDim;
+        }
+
+        const targetW = Math.round(origW * scale);
+        const targetH = Math.round(origH * scale);
+        canvas.width = targetW;
+        canvas.height = targetH;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+
+        const scaledImgData = ctx.getImageData(0, 0, targetW, targetH);
+        const direct = jsQR(scaledImgData.data, targetW, targetH, {
+          inversionAttempts: "attemptBoth",
+        });
+        if (direct && direct.data && direct.data.includes("|")) {
+          resolve(direct.data.trim());
+          return;
+        }
+
+        // Pass 3B: Center crop (passes are typically centered)
+        const centerCropSize = Math.round(Math.min(targetW, targetH) * 0.85);
+        const cropX = Math.round((targetW - centerCropSize) / 2);
+        const cropY = Math.round((targetH - centerCropSize) / 2);
+
+        const cropCanvas = document.createElement("canvas");
+        cropCanvas.width = 500;
+        cropCanvas.height = 500;
+        const cropCtx = cropCanvas.getContext("2d", { willReadFrequently: true });
+        if (cropCtx) {
+          cropCtx.drawImage(
+            canvas,
+            cropX,
+            cropY,
+            centerCropSize,
+            centerCropSize,
+            0,
+            0,
+            500,
+            500
+          );
+          const cropImgData = cropCtx.getImageData(0, 0, 500, 500);
+          const cropResult = jsQR(cropImgData.data, 500, 500, {
             inversionAttempts: "attemptBoth",
           });
-          if (direct && direct.data && direct.data.includes("|")) {
-            resolve(direct.data);
+          if (cropResult && cropResult.data && cropResult.data.includes("|")) {
+            resolve(cropResult.data.trim());
             return;
           }
-
-          // Tier 3: Opaque watermark
-          const watermark = extractOpaqueWatermark(fullImgData);
-          if (watermark && watermark.includes("|")) {
-            resolve(watermark);
-            return;
-          }
-
-          resolve(fallbackSessionPass());
-        } catch {
-          resolve(fallbackSessionPass());
         }
-      };
-      img.onerror = () => resolve(fallbackSessionPass());
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => resolve(fallbackSessionPass());
-    reader.readAsDataURL(file);
-  });
-}
 
-function fallbackSessionPass(): string | null {
-  if (typeof window !== "undefined") {
-    try {
-      const recent = localStorage.getItem("ashraysetu_last_qr_payload");
-      if (recent && recent.includes("|")) return recent;
-    } catch {}
-  }
-  return null;
+        // Pass 3C: Original resolution if under 2048px and was scaled down
+        if (scale < 1 && maxDim <= 2048) {
+          canvas.width = origW;
+          canvas.height = origH;
+          ctx.drawImage(img, 0, 0, origW, origH);
+          const origImgData = ctx.getImageData(0, 0, origW, origH);
+          const origResult = jsQR(origImgData.data, origW, origH, {
+            inversionAttempts: "attemptBoth",
+          });
+          if (origResult && origResult.data && origResult.data.includes("|")) {
+            resolve(origResult.data.trim());
+            return;
+          }
+        }
+
+        // Pass 3D: Opaque pixel watermark check
+        const watermark = extractOpaqueWatermark(scaledImgData);
+        if (watermark && watermark.includes("|")) {
+          resolve(watermark.trim());
+          return;
+        }
+
+        resolve(null);
+      } catch {
+        resolve(null);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(null);
+    };
+
+    img.src = objectUrl;
+  });
 }
 
 // Reusable offscreen canvases to eliminate GC pauses during continuous 30-60fps scanning

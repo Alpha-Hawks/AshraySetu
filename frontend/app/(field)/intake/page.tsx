@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
   Plus,
@@ -15,25 +16,36 @@ import {
   Activity,
   X,
   Clock,
+  Sparkles,
+  Check,
 } from "lucide-react";
 import { db, initializeDatabase, type Shelter } from "@/lib/db/dexie";
 import { translations, type Language } from "@/lib/locales/translations";
 import { encodeQRPayload, generateQRCodeDataURL } from "@/lib/qr/codec";
 import { syncManager } from "@/lib/sync/syncManager";
 
+function getLocalTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
+  } catch {
+    return "Asia/Kolkata";
+  }
+}
+
 /**
- * Format timestamp as exact hh:mm:ss A (e.g. 04:05:32 PM)
+ * Format timestamp as exact hh:mm:ss A (e.g. 04:05:32 PM) in local time zone
  */
 function formatClockTime(
   dateVal: number | string | Date | undefined | null,
-  targetTimeZone = "Asia/Kolkata"
+  targetTimeZone?: string
 ): string {
   if (!dateVal) return "N/A";
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return "N/A";
+    const tz = targetTimeZone || getLocalTimeZone();
     return d.toLocaleTimeString("en-US", {
-      timeZone: targetTimeZone,
+      timeZone: tz,
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -44,10 +56,14 @@ function formatClockTime(
   }
 }
 
+type MorphState = "idle" | "error" | "morphing" | "synthesizing" | "success";
+
 export default function IntakePage() {
   const [lang, setLang] = useState<Language>("en");
   const [shelters, setShelters] = useState<Shelter[]>([]);
   const [selectedShelterId, setSelectedShelterId] = useState<string>("");
+  const [morphState, setMorphState] = useState<MorphState>("idle");
+  const headInputRef = useRef<HTMLInputElement>(null);
 
   // Form Fields
   const [headName, setHeadName] = useState("");
@@ -96,23 +112,95 @@ export default function IntakePage() {
 
   const t = translations[lang];
 
-  // Helper to adjust counts safely
-  const adjust = (
-    setter: React.Dispatch<React.SetStateAction<number>>,
-    delta: number,
-    min = 0
-  ) => {
-    setter((prev) => Math.max(min, prev + delta));
+  // Adjust individual demographic groups safely
+  const adjustMale = (delta: number) => {
+    setMaleCount((prev) => {
+      const next = Math.max(0, prev + delta);
+      // Ensure at least 1 person exists across all categories
+      if (next + femaleCount + infantCount + elderlyCount < 1) return prev;
+      return next;
+    });
   };
+
+  const adjustFemale = (delta: number) => {
+    setFemaleCount((prev) => {
+      const next = Math.max(0, prev + delta);
+      if (maleCount + next + infantCount + elderlyCount < 1) return prev;
+      return next;
+    });
+  };
+
+  const adjustInfant = (delta: number) => {
+    setInfantCount((prev) => {
+      const next = Math.max(0, prev + delta);
+      if (maleCount + femaleCount + next + elderlyCount < 1) return prev;
+      return next;
+    });
+  };
+
+  const adjustElderly = (delta: number) => {
+    setElderlyCount((prev) => {
+      const next = Math.max(0, prev + delta);
+      if (maleCount + femaleCount + infantCount + next < 1) return prev;
+      return next;
+    });
+  };
+
+  const adjustLivestock = (delta: number) => {
+    setLivestockCount((prev) => Math.max(0, prev + delta));
+  };
+
+  // Adjust Total Family Members directly: distributes changes across breakdown to stay in sync
+  const adjustTotal = (delta: number) => {
+    if (delta > 0) {
+      // Adding a member: balance between adult females and adult males
+      if (maleCount <= femaleCount) {
+        setMaleCount((prev) => prev + 1);
+      } else {
+        setFemaleCount((prev) => prev + 1);
+      }
+    } else if (delta < 0) {
+      const currentSum = maleCount + femaleCount + infantCount + elderlyCount;
+      if (currentSum <= 1) return; // Keep at least 1 family member
+
+      // Deduct from largest group first
+      if (femaleCount >= maleCount && femaleCount > 0) {
+        setFemaleCount((prev) => Math.max(0, prev - 1));
+      } else if (maleCount > 0) {
+        setMaleCount((prev) => Math.max(0, prev - 1));
+      } else if (elderlyCount > 0) {
+        setElderlyCount((prev) => Math.max(0, prev - 1));
+      } else if (infantCount > 0) {
+        setInfantCount((prev) => Math.max(0, prev - 1));
+      }
+    }
+  };
+
+  // Automatically keep totalMembers in sync with the sum of all family breakdown members
+  useEffect(() => {
+    const computedTotal = Math.max(1, maleCount + femaleCount + infantCount + elderlyCount);
+    setTotalMembers(computedTotal);
+  }, [maleCount, femaleCount, infantCount, elderlyCount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!headName.trim()) {
-      alert("Please provide the head of household name.");
+      setMorphState("error");
+      headInputRef.current?.focus();
+      setTimeout(() => {
+        setMorphState("idle");
+      }, 2500);
       return;
     }
 
     setIsSubmitting(true);
+    setMorphState("morphing");
+
+    // Phase 2 transition to synthesizing
+    const synthTimer = setTimeout(() => {
+      setMorphState("synthesizing");
+    }, 650);
+
     const householdId = crypto.randomUUID();
     const shortRef = householdId.substring(0, 4);
 
@@ -233,7 +321,14 @@ export default function IntakePage() {
       createdAt: authoritativeCreatedAt,
     });
 
-    const qrDataUrl = await generateQRCodeDataURL(qrPayload);
+    const [_, qrDataUrl] = await Promise.all([
+      new Promise((res) => setTimeout(res, 1200)),
+      generateQRCodeDataURL(qrPayload),
+    ]);
+
+    clearTimeout(synthTimer);
+    setMorphState("success");
+    await new Promise((res) => setTimeout(res, 550));
 
     setQrModalData({
       qrUrl: qrDataUrl,
@@ -252,7 +347,13 @@ export default function IntakePage() {
     setHamletName("");
     setClinicalNotes("");
     setVulnerability("NONE");
+    setMaleCount(2);
+    setFemaleCount(2);
+    setInfantCount(0);
+    setElderlyCount(0);
+    setLivestockCount(0);
     setIsSubmitting(false);
+    setMorphState("idle");
     setSuccessToast(true);
     setTimeout(() => setSuccessToast(false), 4000);
   };
@@ -305,6 +406,7 @@ export default function IntakePage() {
       {/* Main Intake Form */}
       <form
         onSubmit={handleSubmit}
+        noValidate
         className="p-5 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 shadow-lg"
       >
         {/* Basic Household Identity */}
@@ -314,12 +416,16 @@ export default function IntakePage() {
               {t.headName} <span className="text-red-400">*</span>
             </label>
             <input
+              ref={headInputRef}
               type="text"
-              required
               value={headName}
               onChange={(e) => setHeadName(e.target.value)}
               placeholder={t.headNamePlaceholder}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+              className={`w-full bg-slate-950 border rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition-all duration-300 ${
+                morphState === "error"
+                  ? "border-rose-500 ring-2 ring-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.4)] animate-pulse"
+                  : "border-slate-700 focus:border-sky-500"
+              }`}
             />
           </div>
 
@@ -354,35 +460,47 @@ export default function IntakePage() {
 
         {/* Demographic Headcounts with Large Touch Buttons */}
         <div className="pt-4 border-t border-slate-800 space-y-3">
-          <div className="text-xs font-bold text-sky-400 uppercase tracking-wider">
-            Demographic Breakdown (ଲୋକସଂଖ୍ୟା)
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-bold text-sky-400 uppercase tracking-wider">
+              Demographic Breakdown (ଲୋକସଂଖ୍ୟା)
+            </div>
+            <div className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30 font-semibold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>AUTO-CALCULATED</span>
+            </div>
           </div>
 
-          {/* Total Members */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+          {/* Total Members - Auto-synced */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-950 border border-sky-500/40 shadow-inner">
             <div>
-              <div className="text-sm font-semibold text-white">
-                {t.totalMembers}
+              <div className="text-sm font-bold text-white flex items-center gap-2">
+                <span>{t.totalMembers}</span>
+                <span className="text-[10px] font-mono bg-sky-950 text-sky-300 px-1.5 py-0.5 rounded border border-sky-500/30">
+                  {totalMembers} Total Persons
+                </span>
               </div>
-              <div className="text-[11px] text-slate-400">
-                Total family units
+              <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
+                Formula: {maleCount}M + {femaleCount}F + {infantCount}Inf + {elderlyCount}Eld = {totalMembers}
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => adjust(setTotalMembers, -1, 1)}
-                className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-white flex items-center justify-center font-bold"
+                onClick={() => adjustTotal(-1)}
+                disabled={totalMembers <= 1}
+                className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold transition shadow"
+                title="Decrease family member"
               >
                 <Minus className="w-4 h-4" />
               </button>
-              <span className="w-10 text-center font-black text-lg text-sky-400">
+              <span className="w-10 text-center font-black text-xl text-sky-400 font-mono">
                 {totalMembers}
               </span>
               <button
                 type="button"
-                onClick={() => adjust(setTotalMembers, 1, 1)}
-                className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-white flex items-center justify-center font-bold"
+                onClick={() => adjustTotal(1)}
+                className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-white flex items-center justify-center font-bold transition shadow"
+                title="Add family member"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -392,25 +510,29 @@ export default function IntakePage() {
           {/* Gender & Age Breakdown Grids */}
           <div className="grid grid-cols-2 gap-2.5">
             {/* Adult Males */}
-            <div className="p-2.5 rounded-xl bg-slate-950/50 border border-slate-800 flex items-center justify-between">
-              <span className="text-xs text-slate-300 font-medium">
-                {t.adultMales}
-              </span>
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between hover:border-slate-700 transition">
+              <div>
+                <span className="text-xs text-slate-200 font-semibold block">
+                  {t.adultMales}
+                </span>
+                <span className="text-[10px] text-slate-500">18–60 yrs</span>
+              </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => adjust(setMaleCount, -1, 0)}
-                  className="w-7 h-7 rounded bg-slate-800 text-xs font-bold"
+                  onClick={() => adjustMale(-1)}
+                  disabled={maleCount <= 0 || (totalMembers <= 1 && maleCount === 1)}
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center"
                 >
                   -
                 </button>
-                <span className="w-6 text-center text-xs font-bold text-white">
+                <span className="w-6 text-center text-xs font-bold font-mono text-white">
                   {maleCount}
                 </span>
                 <button
                   type="button"
-                  onClick={() => adjust(setMaleCount, 1, 0)}
-                  className="w-7 h-7 rounded bg-slate-800 text-xs font-bold"
+                  onClick={() => adjustMale(1)}
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-bold text-white flex items-center justify-center"
                 >
                   +
                 </button>
@@ -418,25 +540,29 @@ export default function IntakePage() {
             </div>
 
             {/* Adult Females */}
-            <div className="p-2.5 rounded-xl bg-slate-950/50 border border-slate-800 flex items-center justify-between">
-              <span className="text-xs text-slate-300 font-medium">
-                {t.adultFemales}
-              </span>
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between hover:border-slate-700 transition">
+              <div>
+                <span className="text-xs text-slate-200 font-semibold block">
+                  {t.adultFemales}
+                </span>
+                <span className="text-[10px] text-slate-500">18–60 yrs</span>
+              </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => adjust(setFemaleCount, -1, 0)}
-                  className="w-7 h-7 rounded bg-slate-800 text-xs font-bold"
+                  onClick={() => adjustFemale(-1)}
+                  disabled={femaleCount <= 0 || (totalMembers <= 1 && femaleCount === 1)}
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center"
                 >
                   -
                 </button>
-                <span className="w-6 text-center text-xs font-bold text-white">
+                <span className="w-6 text-center text-xs font-bold font-mono text-white">
                   {femaleCount}
                 </span>
                 <button
                   type="button"
-                  onClick={() => adjust(setFemaleCount, 1, 0)}
-                  className="w-7 h-7 rounded bg-slate-800 text-xs font-bold"
+                  onClick={() => adjustFemale(1)}
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-bold text-white flex items-center justify-center"
                 >
                   +
                 </button>
@@ -444,25 +570,30 @@ export default function IntakePage() {
             </div>
 
             {/* Infants Under 5 */}
-            <div className="p-2.5 rounded-xl bg-slate-950/50 border border-slate-800 flex items-center justify-between">
-              <span className="text-xs text-amber-300 font-medium">
-                {t.infants}
-              </span>
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between hover:border-slate-700 transition">
+              <div>
+                <span className="text-xs text-amber-300 font-semibold flex items-center gap-1">
+                  <Baby className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{t.infants}</span>
+                </span>
+                <span className="text-[10px] text-slate-500">Under 5 yrs</span>
+              </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => adjust(setInfantCount, -1, 0)}
-                  className="w-7 h-7 rounded bg-slate-800 text-xs font-bold"
+                  onClick={() => adjustInfant(-1)}
+                  disabled={infantCount <= 0 || (totalMembers <= 1 && infantCount === 1)}
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center"
                 >
                   -
                 </button>
-                <span className="w-6 text-center text-xs font-bold text-amber-400">
+                <span className="w-6 text-center text-xs font-bold font-mono text-amber-400">
                   {infantCount}
                 </span>
                 <button
                   type="button"
-                  onClick={() => adjust(setInfantCount, 1, 0)}
-                  className="w-7 h-7 rounded bg-slate-800 text-xs font-bold"
+                  onClick={() => adjustInfant(1)}
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-bold text-white flex items-center justify-center"
                 >
                   +
                 </button>
@@ -470,25 +601,30 @@ export default function IntakePage() {
             </div>
 
             {/* Elderly Above 60 */}
-            <div className="p-2.5 rounded-xl bg-slate-950/50 border border-slate-800 flex items-center justify-between">
-              <span className="text-xs text-indigo-300 font-medium">
-                {t.elderly}
-              </span>
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between hover:border-slate-700 transition">
+              <div>
+                <span className="text-xs text-indigo-300 font-semibold flex items-center gap-1">
+                  <HeartPulse className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>{t.elderly}</span>
+                </span>
+                <span className="text-[10px] text-slate-500">Over 60 yrs</span>
+              </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => adjust(setElderlyCount, -1, 0)}
-                  className="w-7 h-7 rounded bg-slate-800 text-xs font-bold"
+                  onClick={() => adjustElderly(-1)}
+                  disabled={elderlyCount <= 0 || (totalMembers <= 1 && elderlyCount === 1)}
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center"
                 >
                   -
                 </button>
-                <span className="w-6 text-center text-xs font-bold text-indigo-400">
+                <span className="w-6 text-center text-xs font-bold font-mono text-indigo-400">
                   {elderlyCount}
                 </span>
                 <button
                   type="button"
-                  onClick={() => adjust(setElderlyCount, 1, 0)}
-                  className="w-7 h-7 rounded bg-slate-800 text-xs font-bold"
+                  onClick={() => adjustElderly(1)}
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-bold text-white flex items-center justify-center"
                 >
                   +
                 </button>
@@ -496,31 +632,32 @@ export default function IntakePage() {
             </div>
           </div>
 
-          {/* Livestock Counter */}
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/50 border border-slate-800">
+          {/* Livestock Counter (separate from human members) */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition">
             <div>
-              <div className="text-xs font-medium text-emerald-400">
-                {t.livestock}
+              <div className="text-xs font-semibold text-emerald-400">
+                {t.livestock} (Cattle / Goats)
               </div>
               <div className="text-[10px] text-slate-500">
-                Mound accommodation
+                Mound accommodation (separate from human capacity)
               </div>
             </div>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => adjust(setLivestockCount, -1, 0)}
-                className="w-7 h-7 rounded bg-slate-800 text-xs font-bold"
+                onClick={() => adjustLivestock(-1)}
+                disabled={livestockCount <= 0}
+                className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center"
               >
                 -
               </button>
-              <span className="w-6 text-center text-xs font-bold text-emerald-400">
+              <span className="w-6 text-center text-xs font-bold font-mono text-emerald-400">
                 {livestockCount}
               </span>
               <button
                 type="button"
-                onClick={() => adjust(setLivestockCount, 1, 0)}
-                className="w-7 h-7 rounded bg-slate-800 text-xs font-bold"
+                onClick={() => adjustLivestock(1)}
+                className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-bold text-white flex items-center justify-center"
               >
                 +
               </button>
@@ -587,16 +724,168 @@ export default function IntakePage() {
           )}
         </div>
 
-        {/* Submit Button */}
-        <div className="pt-2">
-          <button
+        {/* Submit Button with Creative Morph Animation */}
+        <div className="pt-2 flex justify-center w-full">
+          <motion.button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3.5 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-98 text-white font-bold text-sm transition shadow-lg shadow-sky-600/30 flex items-center justify-center gap-2"
+            layout
+            initial={false}
+            animate={
+              morphState === "error"
+                ? {
+                    x: [0, -10, 10, -8, 8, -4, 4, 0],
+                    transition: { duration: 0.5, ease: "easeInOut" },
+                  }
+                : morphState === "idle"
+                ? { width: "100%", borderRadius: "16px", scale: 1 }
+                : { width: "310px", borderRadius: "9999px", scale: [1, 0.98, 1.02, 1] }
+            }
+            whileHover={morphState === "idle" ? { scale: 1.01 } : {}}
+            whileTap={morphState === "idle" ? { scale: 0.985 } : {}}
+            transition={{
+              layout: { type: "spring", stiffness: 340, damping: 26 },
+              scale: { duration: 0.2 },
+            }}
+            className={`relative overflow-hidden h-14 font-bold text-sm select-none transition-colors duration-300 flex items-center justify-center shadow-xl ${
+              morphState === "error"
+                ? "bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white border border-rose-400 shadow-rose-600/40"
+                : morphState === "success"
+                ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white border border-emerald-300 shadow-[0_0_35px_rgba(16,185,129,0.65)]"
+                : morphState === "morphing" || morphState === "synthesizing"
+                ? "bg-slate-950 text-white border-2 border-sky-400 shadow-[0_0_35px_rgba(56,189,248,0.45)] ring-2 ring-sky-500/30"
+                : "bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:via-blue-500 hover:to-indigo-500 text-white border border-sky-400/30 shadow-sky-600/35 group"
+            }`}
           >
-            <QrCode className="w-5 h-5" />
-            <span>{t.submitIntake}</span>
-          </button>
+            {/* Idle Ambient Light Sheen */}
+            {morphState === "idle" && (
+              <>
+                <motion.div
+                  animate={{ x: ["-120%", "220%"] }}
+                  transition={{ repeat: Infinity, duration: 3.5, ease: "linear", repeatDelay: 1 }}
+                  className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 pointer-events-none"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-sky-400/10 via-indigo-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              </>
+            )}
+
+            {/* Morphing Outer Dashed Orbit Ring */}
+            {(morphState === "morphing" || morphState === "synthesizing") && (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 2.2, ease: "linear" }}
+                className="absolute inset-0 rounded-full border border-dashed border-sky-400/40 pointer-events-none"
+              />
+            )}
+
+            {/* Particle Burst for Success State */}
+            {morphState === "success" && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
+                  const rad = (angle * Math.PI) / 180;
+                  const x = Math.cos(rad) * 48;
+                  const y = Math.sin(rad) * 26;
+                  return (
+                    <motion.span
+                      key={i}
+                      initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+                      animate={{ x, y, opacity: 0, scale: 0.2 }}
+                      transition={{ duration: 0.55, ease: "easeOut" }}
+                      className="absolute w-2 h-2 rounded-full bg-emerald-200 shadow-[0_0_8px_#34d399]"
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Content Switcher */}
+            <AnimatePresence mode="wait">
+              {morphState === "idle" && (
+                <motion.div
+                  key="idle"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="flex items-center gap-2.5 font-bold tracking-wide"
+                >
+                  <div className="p-1 rounded-lg bg-white/10 group-hover:bg-white/20 transition-colors">
+                    <QrCode className="w-5 h-5 text-white" />
+                  </div>
+                  <span>{t.submitIntake}</span>
+                </motion.div>
+              )}
+
+              {morphState === "error" && (
+                <motion.div
+                  key="error"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="flex items-center gap-2 text-xs font-semibold px-4"
+                >
+                  <AlertCircle className="w-4 h-4 text-rose-200 shrink-0" />
+                  <span>Please Enter Head of Household Name</span>
+                </motion.div>
+              )}
+
+              {(morphState === "morphing" || morphState === "synthesizing") && (
+                <motion.div
+                  key="morphing-scanner"
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.85 }}
+                  className="flex items-center gap-3 px-3"
+                >
+                  {/* Cyber Scanner Disc */}
+                  <div className="relative w-8 h-8 rounded-full bg-sky-500/20 border border-sky-400/60 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                    <QrCode className="w-4 h-4 text-sky-300" />
+                    {/* Sweeping Laser Beam */}
+                    <motion.div
+                      animate={{ y: [-14, 14, -14] }}
+                      transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
+                      className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-300 to-transparent shadow-[0_0_8px_#38bdf8]"
+                    />
+                  </div>
+
+                  {/* Morph Status Text */}
+                  <div className="text-left flex flex-col justify-center">
+                    <div className="text-xs font-mono font-bold text-sky-300 tracking-tight flex items-center gap-1.5">
+                      {morphState === "morphing" ? (
+                        <>
+                          <span>Securing Token...</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+                        </>
+                      ) : (
+                        <>
+                          <span>Forging QR Pass...</span>
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+                        </>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      {morphState === "morphing" ? "Syncing server timestamp" : "Cryptographic circular pass"}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {morphState === "success" && (
+                <motion.div
+                  key="success"
+                  initial={{ scale: 0.7, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  className="flex items-center gap-2.5 text-xs font-bold text-white tracking-wide"
+                >
+                  <div className="w-7 h-7 rounded-full bg-white/20 border border-white/40 flex items-center justify-center shadow-inner">
+                    <Check className="w-4 h-4 text-white stroke-[3]" />
+                  </div>
+                  <span className="text-sm font-extrabold tracking-wide">Pass Generated! ✓</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
         </div>
       </form>
 
@@ -629,6 +918,9 @@ export default function IntakePage() {
                   <strong className="text-sky-300 font-black tracking-wide">
                     {formatClockTime(qrModalData.createdAt)}
                   </strong>
+                </span>
+                <span className="text-[10px] text-sky-400 bg-sky-950/80 px-1.5 py-0.5 rounded border border-sky-500/30">
+                  {getLocalTimeZone()}
                 </span>
               </div>
             </div>

@@ -1,5 +1,1207 @@
 [
   {
+    "id": "act-mulnaonl-05bec6",
+    "timestamp": 1790623999569,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for cvc (a192, 4 members) destined for AP-SHELTER-ANK-009",
+    "short_ref": "a192",
+    "head_name": "cvc"
+  },
+  {
+    "id": "act-muln9t4x-085ae0",
+    "timestamp": 1790623958721,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n06o510_m timed out after inactivity",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-muln9lf4-4e966a",
+    "timestamp": 1790623948720,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_3exojyg_m timed out after inactivity",
+    "sessionId": "sess_3exojyg_muln5qlq"
+  },
+  {
+    "id": "act-muln8b35-274637",
+    "timestamp": 1790623888673,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n06o510_m timed out after inactivity",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-muln67ws-a32ce3",
+    "timestamp": 1790623791244,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for DINESH (e85c, 4 members) destined for AP-SHELTER-ANK-009",
+    "short_ref": "e85c",
+    "head_name": "DINESH"
+  },
+  {
+    "id": "act-muln5qn0-63278e",
+    "timestamp": 1790623768860,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_3exojyg_m arrived at /",
+    "sessionId": "sess_3exojyg_muln5qlq"
+  },
+  {
+    "id": "act-muln5az3-ec7f4f",
+    "timestamp": 1790623748559,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n06o510_m timed out after inactivity",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-muln35qf-123234",
+    "timestamp": 1790623648455,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n06o510_m timed out after inactivity",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-muln1veq-93ba67",
+    "timestamp": 1790623588418,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n06o510_m timed out after inactivity",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-muln0l2q-1fd033",
+    "timestamp": 1790623528371,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n06o510_m timed out after inactivity",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-mulmzaqu-e8834a",
+    "timestamp": 1790623468326,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n06o510_m timed out after inactivity",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-mulmy0eq-b73aef",
+    "timestamp": 1790623408274,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n06o510_m timed out after inactivity",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-mulmvfqt-d466e6",
+    "timestamp": 1790623288182,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n06o510_m timed out after inactivity",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-mulmud4l-42afbf",
+    "timestamp": 1790623238134,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_n06o510_m timed out after inactivity",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-mulmdkfs-b3cd55",
+    "timestamp": 1790622454456,
+    "type": "ADMIN_LOGIN",
+    "title": "Administrator Authenticated",
+    "description": "Emergency Coordinator logged into Admin Command Center from ::1",
+    "username": "admin"
+  },
+  {
+    "id": "act-mulm9g9r-e50f5e",
+    "timestamp": 1790622262431,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for nyc (a971, 5 members) destined for AP-SHELTER-ANK-009",
+    "short_ref": "a971",
+    "head_name": "nyc"
+  },
+  {
+    "id": "act-mulm8b75-ff4b4d",
+    "timestamp": 1790622209201,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_n06o510_m arrived at /intake",
+    "sessionId": "sess_n06o510_mulm8b5p"
+  },
+  {
+    "id": "act-mulm89qz-d2ddf4",
+    "timestamp": 1790622207326,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ef4dw3n_m timed out after inactivity",
+    "sessionId": "sess_ef4dw3n_mullzlm1"
+  },
+  {
+    "id": "act-mulm4mh5-f45282",
+    "timestamp": 1790622037193,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ef4dw3n_m timed out after inactivity",
+    "sessionId": "sess_ef4dw3n_mullzlm1"
+  },
+  {
+    "id": "act-mulm1enb-31f2bb",
+    "timestamp": 1790621887079,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_7ik55h0_m timed out after inactivity",
+    "sessionId": "sess_7ik55h0_mullzg2h"
+  },
+  {
+    "id": "act-mullzlmn-5f75ae",
+    "timestamp": 1790621802815,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_ef4dw3n_m arrived at /",
+    "sessionId": "sess_ef4dw3n_mullzlm1"
+  },
+  {
+    "id": "act-mullzg4s-7cd3b6",
+    "timestamp": 1790621795692,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_7ik55h0_m arrived at /",
+    "sessionId": "sess_7ik55h0_mullzg2h"
+  },
+  {
+    "id": "act-mullwwik-2b1a91",
+    "timestamp": 1790621676956,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullrr74-870dd1",
+    "timestamp": 1790621436784,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullqgvg-4d4ba5",
+    "timestamp": 1790621376748,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullp6k7-b1f96a",
+    "timestamp": 1790621316727,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullnw8d-ef3c76",
+    "timestamp": 1790621256685,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullmlwo-8ea524",
+    "timestamp": 1790621196648,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mulllbkw-f4f7a3",
+    "timestamp": 1790621136608,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullk18o-e28916",
+    "timestamp": 1790621076552,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mulliqx8-73db47",
+    "timestamp": 1790621016524,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullhgkf-cf8c06",
+    "timestamp": 1790620956447,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullg68s-968335",
+    "timestamp": 1790620896412,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullevwy-13be28",
+    "timestamp": 1790620836370,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mulldlkz-130bff",
+    "timestamp": 1790620776324,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullcb8s-3c19ee",
+    "timestamp": 1790620716268,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mullb0x0-13d12a",
+    "timestamp": 1790620656229,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mull9qlg-91a79e",
+    "timestamp": 1790620596196,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mull8g91-415ba2",
+    "timestamp": 1790620536134,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mull75wu-014ce4",
+    "timestamp": 1790620476078,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mull5vky-4b24f9",
+    "timestamp": 1790620416035,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mull4l8l-0753ca",
+    "timestamp": 1790620355974,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mull3awa-a0eb01",
+    "timestamp": 1790620295914,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mull20ke-dd3018",
+    "timestamp": 1790620235870,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mull0q7f-2796f1",
+    "timestamp": 1790620175787,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mulkzfvx-6b00a6",
+    "timestamp": 1790620115757,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mulky5ka-9320e4",
+    "timestamp": 1790620055722,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mulkwv8h-bd07c8",
+    "timestamp": 1790619995681,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mulkvkwi-28ec4d",
+    "timestamp": 1790619935634,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mulkuak2-9864e6",
+    "timestamp": 1790619875570,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mulkt085-f688ad",
+    "timestamp": 1790619815525,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_mb29lmp_m timed out after inactivity",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-mulk5d91-486083",
+    "timestamp": 1790618712661,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ sfs (64fc, 4 persons) scanned at AP-SHELTER-ANK-009 in 00 min 27 sec.",
+    "short_ref": "64fc",
+    "head_name": "sfs",
+    "duration_seconds": 27
+  },
+  {
+    "id": "act-mulk4s3g-2a9576",
+    "timestamp": 1790618685244,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for sfs (64fc, 4 members) destined for AP-SHELTER-ANK-009",
+    "short_ref": "64fc",
+    "head_name": "sfs"
+  },
+  {
+    "id": "act-mulk4ey0-ecc9c8",
+    "timestamp": 1790618668200,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_mb29lmp_m arrived at /scan",
+    "sessionId": "sess_mb29lmp_mulk4erv"
+  },
+  {
+    "id": "act-muljublt-a0b3c2",
+    "timestamp": 1790618197313,
+    "type": "SHELTER_ARRIVAL",
+    "title": "QR Pass Re-Scanned at Gate",
+    "description": "✓ hi (test-muljua1k, 4 persons) scanned at AP-SHELTER-ANK-009 in 00 min 47 sec.",
+    "short_ref": "test-muljua1k",
+    "head_name": "hi",
+    "duration_seconds": 47
+  },
+  {
+    "id": "act-muljua1n-a42fff",
+    "timestamp": 1790618195291,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ hi (test-muljua1k, 4 persons) scanned at AP-SHELTER-ANK-009 in 00 min 45 sec.",
+    "short_ref": "test-muljua1k",
+    "head_name": "hi",
+    "duration_seconds": 45
+  },
+  {
+    "id": "act-muljua1l-fa6f85",
+    "timestamp": 1790618195289,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for hi (test-muljua1k, 4 members) destined for AP-SHELTER-ANK-009",
+    "short_ref": "test-muljua1k",
+    "head_name": "hi"
+  },
+  {
+    "id": "act-muljsfi9-f5b08f",
+    "timestamp": 1790618109057,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ hi (test-muljsfhn, 4 persons) scanned at AP-SHELTER-ANK-009 in 00 min 45 sec.",
+    "short_ref": "test-muljsfhn",
+    "head_name": "hi",
+    "duration_seconds": 45
+  },
+  {
+    "id": "act-muljsfi7-cc5733",
+    "timestamp": 1790618109055,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for hi (test-muljsfhn, 4 members) destined for AP-SHELTER-ANK-009",
+    "short_ref": "test-muljsfhn",
+    "head_name": "hi"
+  },
+  {
+    "id": "act-mulj1c2q-158f85",
+    "timestamp": 1790616844899,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulj01qm-245fcf",
+    "timestamp": 1790616784847,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulizf7c-836a8f",
+    "timestamp": 1790616755640,
+    "type": "QR_SCAN_SUCCESS",
+    "title": "QR Pass Re-Scanned",
+    "description": "Pass 3324 (hi) verified again at gate. Total Scans: 2.",
+    "short_ref": "3324",
+    "head_name": "hi"
+  },
+  {
+    "id": "act-muliyrey-3e764b",
+    "timestamp": 1790616724810,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muliynpm-5b40ee",
+    "timestamp": 1790616720010,
+    "type": "SHELTER_ARRIVAL",
+    "title": "Citizen Reached Shelter",
+    "description": "✓ hi & family (4 persons) reached AP-SHELTER-ANK-009 in 00 min 12 sec.",
+    "short_ref": "3324",
+    "head_name": "hi",
+    "duration_seconds": 12
+  },
+  {
+    "id": "act-muliydrd-1d5867",
+    "timestamp": 1790616707113,
+    "type": "QR_CREATED",
+    "title": "Evacuation Pass Issued",
+    "description": "Pass issued for hi (3324, 4 members) destined for AP-SHELTER-ANK-009",
+    "short_ref": "3324",
+    "head_name": "hi"
+  },
+  {
+    "id": "act-mulixh2t-3736c8",
+    "timestamp": 1790616664757,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muliw6qd-034f08",
+    "timestamp": 1790616604696,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muliuwe6-d50824",
+    "timestamp": 1790616544638,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulitm22-75d94b",
+    "timestamp": 1790616484586,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulisbq0-01a75f",
+    "timestamp": 1790616424536,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulir1e0-234622",
+    "timestamp": 1790616364488,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulipr22-3d6564",
+    "timestamp": 1790616304442,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muliogpt-39ffdd",
+    "timestamp": 1790616244385,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulin6dv-a13109",
+    "timestamp": 1790616184339,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulilw1h-29f8a5",
+    "timestamp": 1790616124278,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muliklp7-79e7d6",
+    "timestamp": 1790616064219,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulijbda-104dce",
+    "timestamp": 1790616004174,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulii10r-5bee2c",
+    "timestamp": 1790615944108,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muligqog-2698fe",
+    "timestamp": 1790615884048,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulifgch-d131c3",
+    "timestamp": 1790615824001,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulie60e-4237e4",
+    "timestamp": 1790615763950,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulicvog-0c11aa",
+    "timestamp": 1790615703904,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muliblca-93e75d",
+    "timestamp": 1790615643850,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muliab15-21597f",
+    "timestamp": 1790615583833,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muli90p5-edeb1e",
+    "timestamp": 1790615523785,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muli7qd4-ad0c10",
+    "timestamp": 1790615463736,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muli6g19-7286d0",
+    "timestamp": 1790615403693,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muli55pw-7939c8",
+    "timestamp": 1790615343668,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muli3vep-459589",
+    "timestamp": 1790615283649,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muli2l35-ee035a",
+    "timestamp": 1790615223617,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muli1aqy-4aa410",
+    "timestamp": 1790615163562,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-muli00ev-892706",
+    "timestamp": 1790615103511,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulhyq38-736187",
+    "timestamp": 1790615043476,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulhxu38-51b176",
+    "timestamp": 1790615002004,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_8yxxd1r_m arrived at /scan",
+    "sessionId": "sess_8yxxd1r_mulhxu33"
+  },
+  {
+    "id": "act-mulhxfrc-838420",
+    "timestamp": 1790614983432,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulhw5es-0b2945",
+    "timestamp": 1790614923364,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulhuv2d-e287c4",
+    "timestamp": 1790614863301,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulhtkqj-3d8006",
+    "timestamp": 1790614803259,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulhr033-ba5e87",
+    "timestamp": 1790614683183,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulhpprd-09a1d3",
+    "timestamp": 1790614623145,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulhofey-7968b7",
+    "timestamp": 1790614563082,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulhn52k-4cffb1",
+    "timestamp": 1790614503020,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_ygwo2rd_m timed out after inactivity",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulhfxjm-94fbe9",
+    "timestamp": 1790614166676,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session sess_ygwo2rd_m arrived at /",
+    "sessionId": "sess_ygwo2rd_mulhfxj1"
+  },
+  {
+    "id": "act-mulf045i-64f6f1",
+    "timestamp": 1790610069510,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muleyttp-fe0432",
+    "timestamp": 1790610009469,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulexji4-b7ec2c",
+    "timestamp": 1790609949436,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulew96i-92311f",
+    "timestamp": 1790609889403,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muleuyu6-9d86a7",
+    "timestamp": 1790609829342,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muletoi7-d78df1",
+    "timestamp": 1790609769295,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulese62-3ab2f0",
+    "timestamp": 1790609709242,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muler3tu-f64f18",
+    "timestamp": 1790609649186,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulepthu-c3a1b6",
+    "timestamp": 1790609589138,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muleoj5n-6a79d5",
+    "timestamp": 1790609529083,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulen8sx-e013c3",
+    "timestamp": 1790609469010,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulelygx-29a545",
+    "timestamp": 1790609408962,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muleko55-2af0b3",
+    "timestamp": 1790609348921,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulejdt3-708ffd",
+    "timestamp": 1790609288872,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulei3hj-a28b4e",
+    "timestamp": 1790609228839,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulegt5r-fff2da",
+    "timestamp": 1790609168799,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulefith-c70a9a",
+    "timestamp": 1790609108741,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulee8ht-acc9d5",
+    "timestamp": 1790609048705,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulecy5y-11165d",
+    "timestamp": 1790608988663,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulebntz-5ce21c",
+    "timestamp": 1790608928615,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mule7su5-3ef7a9",
+    "timestamp": 1790608748477,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mule6iiw-60947c",
+    "timestamp": 1790608688456,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mule586t-4aaa23",
+    "timestamp": 1790608628408,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mule3xuu-8e5dbc",
+    "timestamp": 1790608568358,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mule2nih-131799",
+    "timestamp": 1790608508297,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mule1d6t-2a8187",
+    "timestamp": 1790608448261,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mule02ue-e529e4",
+    "timestamp": 1790608388198,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldysic-128a0b",
+    "timestamp": 1790608328148,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldxi6h-3f7d11",
+    "timestamp": 1790608268105,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldw7ul-f8ad58",
+    "timestamp": 1790608208061,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulduxhx-894e10",
+    "timestamp": 1790608147989,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldtn5m-de8db6",
+    "timestamp": 1790608087930,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldsctp-8b1338",
+    "timestamp": 1790608027885,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldr2hq-d47024",
+    "timestamp": 1790607967838,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldps5r-19d2e1",
+    "timestamp": 1790607907791,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldohug-d5b499",
+    "timestamp": 1790607847769,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldn7j0-2471d7",
+    "timestamp": 1790607787740,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldlx76-54b52a",
+    "timestamp": 1790607727698,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldkmvb-98e535",
+    "timestamp": 1790607667655,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldjcjr-5e4c6e",
+    "timestamp": 1790607607623,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldi27m-c2de7b",
+    "timestamp": 1790607547570,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldgrvb-537d3b",
+    "timestamp": 1790607487511,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-muldfhjb-e075e1",
+    "timestamp": 1790607427463,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulde77d-c5015e",
+    "timestamp": 1790607367417,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
+    "id": "act-mulda4hy-d6c07a",
+    "timestamp": 1790607177287,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session sess_wj2eppr_m timed out after inactivity",
+    "sessionId": "sess_wj2eppr_muld3x5d"
+  },
+  {
     "id": "act-muld6wob-3bd693",
     "timestamp": 1790607027179,
     "type": "USER_INACTIVE",
@@ -436,656 +1638,5 @@
     "description": "Pass issued for Pravat Nayak (evac-mulbnh1i, 5 members) destined for OD-KEN-RAJ-001",
     "short_ref": "evac-mulbnh1i",
     "head_name": "Pravat Nayak"
-  },
-  {
-    "id": "act-mulbn75h-3ab389",
-    "timestamp": 1790604428021,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulblwtu-c1f23c",
-    "timestamp": 1790604367987,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulbkmi1-22165a",
-    "timestamp": 1790604307946,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulbjc62-0c7f26",
-    "timestamp": 1790604247898,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulbi1tq-3d4a3f",
-    "timestamp": 1790604187838,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulbh2z8-01d909",
-    "timestamp": 1790604142676,
-    "type": "USER_ENTERED",
-    "title": "Visitor Entered Website",
-    "description": "Visitor session sess_n38rzbe_m arrived at /scan",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulbfh0i-cfc6ef",
-    "timestamp": 1790604067554,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulbf3rg-fdaf25",
-    "timestamp": 1790604050380,
-    "type": "QR_SCAN_SUCCESS",
-    "title": "QR Pass Re-Scanned",
-    "description": "Pass verify-mulbf1ff (Ramesh Jena) verified again at gate. Total Scans: 2.",
-    "short_ref": "verify-mulbf1ff",
-    "head_name": "Ramesh Jena"
-  },
-  {
-    "id": "act-mulbf2zh-727d0c",
-    "timestamp": 1790604049373,
-    "type": "SHELTER_ARRIVAL",
-    "title": "Citizen Reached Shelter",
-    "description": "✓ Ramesh Jena & family (4 persons) reached OD-KEN-RAJ-001 in 00 min 02 sec.",
-    "short_ref": "verify-mulbf1ff",
-    "head_name": "Ramesh Jena",
-    "duration_seconds": 2
-  },
-  {
-    "id": "act-mulbf1fo-3c620b",
-    "timestamp": 1790604047364,
-    "type": "QR_CREATED",
-    "title": "Evacuation Pass Issued",
-    "description": "Pass issued for Ramesh Jena (verify-mulbf1ff, 4 members) destined for OD-KEN-RAJ-001",
-    "short_ref": "verify-mulbf1ff",
-    "head_name": "Ramesh Jena"
-  },
-  {
-    "id": "act-mulbe6od-ed59a0",
-    "timestamp": 1790604007502,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulbcwca-cb32ea",
-    "timestamp": 1790603947450,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulbabnk-100c21",
-    "timestamp": 1790603827328,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulb91a9-c8a75e",
-    "timestamp": 1790603767233,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulb7qxh-f5676a",
-    "timestamp": 1790603707157,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulb6gm4-0a91fc",
-    "timestamp": 1790603647132,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulb56a1-d6f64b",
-    "timestamp": 1790603587082,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulb43nl-8f1ff2",
-    "timestamp": 1790603537025,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulb1by3-0cc029",
-    "timestamp": 1790603407803,
-    "type": "QR_SCAN_SUCCESS",
-    "title": "QR Pass Re-Scanned",
-    "description": "Pass 2e5f (Hi) verified again at gate. Total Scans: 3.",
-    "short_ref": "2e5f",
-    "head_name": "Hi"
-  },
-  {
-    "id": "act-mulb0vdr-3a8c98",
-    "timestamp": 1790603386335,
-    "type": "QR_CREATED",
-    "title": "Evacuation Pass Issued",
-    "description": "Pass issued for hi (0fd1, 4 members) destined for AP-SHELTER-ANK-009",
-    "short_ref": "0fd1",
-    "head_name": "hi"
-  },
-  {
-    "id": "act-mulayc4n-f16883",
-    "timestamp": 1790603268071,
-    "type": "SHELTER_ARRIVAL",
-    "title": "Citizen Reached Shelter",
-    "description": "✓ Dinesh & family (4 persons) reached AP-SHELTER-ANK-009 in 50 min 34 sec.",
-    "short_ref": "4c6f",
-    "head_name": "Dinesh",
-    "duration_seconds": 3034
-  },
-  {
-    "id": "act-mulaxgn7-e86899",
-    "timestamp": 1790603227267,
-    "type": "QR_CREATED",
-    "title": "Evacuation Pass Issued",
-    "description": "Pass issued for Dinesh (3f23, 4 members) destined for AP-SHELTER-ANK-009",
-    "short_ref": "3f23",
-    "head_name": "Dinesh"
-  },
-  {
-    "id": "act-mulaw5vr-c38f6b",
-    "timestamp": 1790603166663,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulauvjt-07e54e",
-    "timestamp": 1790603106617,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulatl84-c236c9",
-    "timestamp": 1790603046580,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulasavf-63044f",
-    "timestamp": 1790602986507,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mular0jn-c5b09e",
-    "timestamp": 1790602926467,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulapq6t-4ccd50",
-    "timestamp": 1790602866389,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulaofuw-821481",
-    "timestamp": 1790602806344,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulan5j1-09dee2",
-    "timestamp": 1790602746302,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_n38rzbe_m timed out after inactivity",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mulajs8r-766368",
-    "timestamp": 1790602589116,
-    "type": "USER_ENTERED",
-    "title": "Visitor Entered Website",
-    "description": "Visitor session sess_n38rzbe_m arrived at /",
-    "sessionId": "sess_n38rzbe_mulajs1l"
-  },
-  {
-    "id": "act-mul9xsyp-ed8eeb",
-    "timestamp": 1790601563617,
-    "type": "SHELTER_ARRIVAL",
-    "title": "Citizen Reached Shelter",
-    "description": "✓ d shiva & family (4 persons) reached AP-SHELTER-ANK-009 in 07 min 35 sec.",
-    "short_ref": "4389",
-    "head_name": "d shiva",
-    "duration_seconds": 455
-  },
-  {
-    "id": "act-mul9wo7e-ba0af4",
-    "timestamp": 1790601510794,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_633hkas_m activated gate camera scanner",
-    "sessionId": "sess_633hkas_mul92pry"
-  },
-  {
-    "id": "act-mul9w6ky-07738a",
-    "timestamp": 1790601487955,
-    "type": "QR_SCAN_SUCCESS",
-    "title": "QR Pass Re-Scanned",
-    "description": "Pass 7343 (G Dinesh) verified again at gate. Total Scans: 8.",
-    "short_ref": "7343",
-    "head_name": "G Dinesh"
-  },
-  {
-    "id": "act-mul9v3ar-571a51",
-    "timestamp": 1790601437044,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_633hkas_m timed out after inactivity",
-    "sessionId": "sess_633hkas_mul92pry"
-  },
-  {
-    "id": "act-mul9sk94-66a1aa",
-    "timestamp": 1790601319048,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_633hkas_m timed out after inactivity",
-    "sessionId": "sess_633hkas_mul92pry"
-  },
-  {
-    "id": "act-mul95ak8-438045",
-    "timestamp": 1790600233400,
-    "type": "QR_CREATED",
-    "title": "Evacuation Pass Issued",
-    "description": "Pass issued for Dinesh (4c6f, 4 members) destined for AP-SHELTER-ANK-009",
-    "short_ref": "4c6f",
-    "head_name": "Dinesh"
-  },
-  {
-    "id": "act-mul93d6c-959f04",
-    "timestamp": 1790600143476,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_6lrai5c_m timed out after inactivity",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul92vvu-2750f1",
-    "timestamp": 1790600121066,
-    "type": "QR_SCAN_SUCCESS",
-    "title": "QR Pass Re-Scanned",
-    "description": "Pass cir560 (Balaram Jena) verified again at gate. Total Scans: 2.",
-    "short_ref": "cir560",
-    "head_name": "Balaram Jena"
-  },
-  {
-    "id": "act-mul92vvp-77d747",
-    "timestamp": 1790600121061,
-    "type": "SHELTER_ARRIVAL",
-    "title": "Citizen Reached Shelter",
-    "description": "✓ Balaram Jena & family (4 persons) reached OR-KEN-SH01 in 01 min 42 sec.",
-    "short_ref": "cir560",
-    "head_name": "Balaram Jena",
-    "duration_seconds": 102
-  },
-  {
-    "id": "act-mul92upm-341584",
-    "timestamp": 1790600119546,
-    "type": "QR_CREATED",
-    "title": "Evacuation Pass Issued",
-    "description": "Pass issued for Balaram Jena (cir912, 4 members) destined for OR-KEN-SH01",
-    "short_ref": "cir912",
-    "head_name": "Balaram Jena"
-  },
-  {
-    "id": "act-mul92psu-e8fd6f",
-    "timestamp": 1790600113182,
-    "type": "USER_ENTERED",
-    "title": "Visitor Entered Website",
-    "description": "Visitor session sess_633hkas_m arrived at /",
-    "sessionId": "sess_633hkas_mul92pry"
-  },
-  {
-    "id": "act-mul92ce8-942b62",
-    "timestamp": 1790600095809,
-    "type": "USER_ENTERED",
-    "title": "Visitor Entered Website",
-    "description": "Visitor session sess_6lrai5c_m arrived at /admin/dashboard",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul90orr-6218cc",
-    "timestamp": 1790600018535,
-    "type": "QR_CREATED",
-    "title": "Evacuation Pass Issued",
-    "description": "Pass issued for Balaram Jena (cir560, 4 members) destined for OR-KEN-SH01",
-    "short_ref": "cir560",
-    "head_name": "Balaram Jena"
-  },
-  {
-    "id": "act-mul8oi1m-1d1b69",
-    "timestamp": 1790599449946,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_6lrai5c_m timed out after inactivity",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul8ms9v-d95081",
-    "timestamp": 1790599369891,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session sess_6lrai5c_m timed out after inactivity",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul7ap9k-14e105",
-    "timestamp": 1790597126504,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul79eyd-f0642e",
-    "timestamp": 1790597066485,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul78g88-e2f098",
-    "timestamp": 1790597021480,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul784oi-bced82",
-    "timestamp": 1790597006514,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul77t35-72d229",
-    "timestamp": 1790596991489,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul77hj1-878f46",
-    "timestamp": 1790596976510,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul775xs-e7102b",
-    "timestamp": 1790596961488,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul76ud7-4bc1d3",
-    "timestamp": 1790596946491,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul76isp-76211b",
-    "timestamp": 1790596931498,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul76fpb-0266ef",
-    "timestamp": 1790596927487,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul76coc-46539d",
-    "timestamp": 1790596923564,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul76777-9c0104",
-    "timestamp": 1790596916467,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul75vmt-405ce3",
-    "timestamp": 1790596901478,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul75jys-7f2314",
-    "timestamp": 1790596886357,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul758e1-9838e6",
-    "timestamp": 1790596871353,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul74wt9-11338b",
-    "timestamp": 1790596856350,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul74vsk-f23981",
-    "timestamp": 1790596855028,
-    "type": "QR_SCAN_SUCCESS",
-    "title": "QR Pass Re-Scanned",
-    "description": "Pass 2e5f (Hi) verified again at gate. Total Scans: 2.",
-    "short_ref": "2e5f",
-    "head_name": "Hi"
-  },
-  {
-    "id": "act-mul74ld5-a3bbcf",
-    "timestamp": 1790596841513,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul749s3-00dd0b",
-    "timestamp": 1790596826499,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul73y7b-f43e95",
-    "timestamp": 1790596811495,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul73mmu-61b257",
-    "timestamp": 1790596796502,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul73b28-204691",
-    "timestamp": 1790596781504,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul735t1-9693c4",
-    "timestamp": 1790596774693,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul72zhk-eb418b",
-    "timestamp": 1790596766504,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul72pmz-6314f9",
-    "timestamp": 1790596753739,
-    "type": "QR_SCANNER_OPENED",
-    "title": "QR Scanner Activated",
-    "description": "Session sess_6lrai5c_m activated gate camera scanner",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul6z5bb-63ce50",
-    "timestamp": 1790596587431,
-    "type": "ADMIN_LOGIN",
-    "title": "Administrator Authenticated",
-    "description": "Emergency Coordinator logged into Admin Command Center from ::1",
-    "username": "admin"
-  },
-  {
-    "id": "act-mul6yz99-dde9bb",
-    "timestamp": 1790596579582,
-    "type": "USER_ENTERED",
-    "title": "Visitor Entered Website",
-    "description": "Visitor session sess_6lrai5c_m arrived at /",
-    "sessionId": "sess_6lrai5c_mul6yyx0"
-  },
-  {
-    "id": "act-mul6x681-32dac5",
-    "timestamp": 1790596495297,
-    "type": "ADMIN_LOGIN",
-    "title": "Administrator Authenticated",
-    "description": "Emergency Coordinator logged into Admin Command Center from ::1",
-    "username": "admin"
-  },
-  {
-    "id": "act-mul6wvdx-f5659a",
-    "timestamp": 1790596481253,
-    "type": "ADMIN_LOGIN",
-    "title": "Administrator Authenticated",
-    "description": "Emergency Coordinator logged into Admin Command Center from ::1",
-    "username": "admin"
-  },
-  {
-    "id": "act-mul6q07a-7452e6",
-    "timestamp": 1790596160902,
-    "type": "USER_INACTIVE",
-    "title": "Visitor Became Inactive",
-    "description": "Session test-sess-001 timed out after inactivity",
-    "sessionId": "test-sess-001"
-  },
-  {
-    "id": "act-mul6p08a-83fe56",
-    "timestamp": 1790596114282,
-    "type": "ADMIN_LOGIN",
-    "title": "Administrator Authenticated",
-    "description": "Emergency Coordinator logged into Admin Command Center from ::1",
-    "username": "admin"
-  },
-  {
-    "id": "act-mul6p05p-0e11ce",
-    "timestamp": 1790596114189,
-    "type": "USER_ENTERED",
-    "title": "Visitor Entered Website",
-    "description": "Visitor session test-sess-001 arrived at /scan",
-    "sessionId": "test-sess-001"
-  },
-  {
-    "id": "act-init-01",
-    "type": "SYSTEM_STARTUP",
-    "title": "AshraySetu EOC Online",
-    "description": "Emergency Operations Command Center monitoring initialized",
-    "timestamp": 1790595000000,
-    "sessionId": "system"
   }
 ]
