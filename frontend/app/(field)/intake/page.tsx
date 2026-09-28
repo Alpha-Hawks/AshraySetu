@@ -169,6 +169,7 @@ export default function IntakePage() {
       triageCode,
       headName,
       hamletName,
+      createdAt: householdRecord.registered_at,
     });
 
     const qrDataUrl = await generateQRCodeDataURL(qrPayload);

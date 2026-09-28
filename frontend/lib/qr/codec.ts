@@ -13,11 +13,12 @@ export interface QRPayloadData {
   triageCode: string;
   headName?: string;
   hamletName?: string;
+  createdAt?: number;
 }
 
 /**
  * Encodes household details into an ultra-compact pipe-delimited payload
- * e.g., V1|OD-KEN-RAJ-001|c4b1|5|2|2|1|0|2|P1_PREG|Pravat|Talachua
+ * e.g., V1|OD-KEN-RAJ-001|c4b1|5|2|2|1|0|2|P1_PREG|Pravat|Talachua|1727517600000
  */
 export function encodeQRPayload(data: QRPayloadData): string {
   const parts = [
@@ -33,6 +34,7 @@ export function encodeQRPayload(data: QRPayloadData): string {
     data.triageCode,
     (data.headName || "").replace(/\|/g, ""),
     (data.hamletName || "").replace(/\|/g, ""),
+    data.createdAt || Date.now(),
   ];
   return parts.join("|");
 }
@@ -73,6 +75,7 @@ export function decodeQRPayload(rawInput: string): QRPayloadData | null {
           triageCode: json.triageCode || json.triage_code || "P3_STD",
           headName: json.headName || json.head_name || "Unknown",
           hamletName: json.hamletName || json.hamlet_name || "Coastal Hamlet",
+          createdAt: json.createdAt || json.created_at || json.registered_at ? Number(json.createdAt || json.created_at || json.registered_at) : undefined,
         };
       } catch {
         // Continue to pipe check
@@ -81,6 +84,7 @@ export function decodeQRPayload(rawInput: string): QRPayloadData | null {
 
     const parts = clean.split("|");
     if (parts.length >= 10) {
+      const parsedCreatedAt = parts[12] ? parseInt(parts[12], 10) : undefined;
       return {
         version: parts[0] || "V1",
         shelterId: parts[1],
@@ -94,6 +98,7 @@ export function decodeQRPayload(rawInput: string): QRPayloadData | null {
         triageCode: parts[9],
         headName: parts[10] || "Unknown",
         hamletName: parts[11] || "Coastal Hamlet",
+        createdAt: parsedCreatedAt && !isNaN(parsedCreatedAt) ? parsedCreatedAt : undefined,
       };
     }
 
