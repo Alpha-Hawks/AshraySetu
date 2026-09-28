@@ -104,6 +104,27 @@ export interface HistoricalCyclone {
   last_verified_at: string;
 }
 
+export interface ShelterAdmission {
+  id: string; // UUID
+  shelter_id: string;
+  household_token: string; // shortRef or UUID
+  head_name: string;
+  hamlet_name: string;
+  ward_number?: number;
+  total_members: number;
+  male_count: number;
+  female_count: number;
+  child_under_five_count: number;
+  elderly_above_sixty_count: number;
+  livestock_count: number;
+  triage_code: string;
+  triage_level: string;
+  admitted_at: number; // epoch ms
+  clinical_notes?: string;
+  ration_water_litres?: number;
+  ration_food_packets?: number;
+}
+
 export class AshraySetuDatabase extends Dexie {
   shelters!: Table<Shelter, string>;
   households!: Table<Household, string>;
@@ -111,6 +132,7 @@ export class AshraySetuDatabase extends Dexie {
   inventory!: Table<InventoryItem, string>;
   sync_logs!: Table<SyncLog, string>;
   historical_cyclones!: Table<HistoricalCyclone, string>;
+  admissions!: Table<ShelterAdmission, string>;
 
   constructor() {
     super("AshraySetuDB");
@@ -121,6 +143,9 @@ export class AshraySetuDatabase extends Dexie {
       inventory: "id, shelter_id, item_type",
       sync_logs: "id, entity_name, record_id, reconciled, client_timestamp",
       historical_cyclones: "id, year, cyclone_name",
+    });
+    this.version(3).stores({
+      admissions: "id, shelter_id, household_token, admitted_at, head_name",
     });
   }
 }
@@ -618,20 +643,117 @@ export async function initializeDatabase() {
     await db.inventory.bulkAdd(newInventorySeed);
   }
 
-  // Seed historical cyclones if empty
-  const cycCount = await db.historical_cyclones.count();
-  if (cycCount === 0) {
-    try {
-      const res = await fetch("/api/ap/cyclones");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.cyclones && Array.isArray(data.cyclones)) {
-          await db.historical_cyclones.bulkAdd(data.cyclones);
-        }
-      }
-    } catch {
-      // Offline fallback
-    }
+  // Seed baseline households & clinical triage if empty
+  const hCount = await db.households.count();
+  if (hCount === 0) {
+    const demoHouseholds: Household[] = [
+      {
+        id: "c4b1-demo-household-01",
+        shelter_id: "OD-KEN-RAJ-001",
+        head_name: "Pravat Kumar Nayak",
+        hamlet_name: "Talachua",
+        ward_number: 4,
+        total_members: 5,
+        male_count: 2,
+        female_count: 2,
+        child_under_five_count: 1,
+        elderly_above_sixty_count: 0,
+        livestock_count: 2,
+        registered_at: Date.now() - 3600000 * 3,
+        sync_status: "SYNCED",
+      },
+      {
+        id: "9e2a-demo-household-02",
+        shelter_id: "OD-KEN-RAJ-001",
+        head_name: "Bishnu Charan Das",
+        hamlet_name: "Batighar Para",
+        ward_number: 2,
+        total_members: 6,
+        male_count: 2,
+        female_count: 3,
+        child_under_five_count: 0,
+        elderly_above_sixty_count: 1,
+        livestock_count: 4,
+        registered_at: Date.now() - 3600000 * 2,
+        sync_status: "SYNCED",
+      },
+      {
+        id: "7f1c-demo-household-03",
+        shelter_id: "AP-SHELTER-VSP-001",
+        head_name: "K. Appala Naidu",
+        hamlet_name: "Bheemili Fishermen Colony",
+        ward_number: 3,
+        total_members: 4,
+        male_count: 1,
+        female_count: 2,
+        child_under_five_count: 1,
+        elderly_above_sixty_count: 0,
+        livestock_count: 1,
+        registered_at: Date.now() - 3600000 * 1,
+        sync_status: "SYNCED",
+      },
+      {
+        id: "3d4e-demo-household-04",
+        shelter_id: "AP-SHELTER-WGD-010",
+        head_name: "M. Subba Rao",
+        hamlet_name: "Perupalem Beach",
+        ward_number: 1,
+        total_members: 3,
+        male_count: 1,
+        female_count: 1,
+        child_under_five_count: 0,
+        elderly_above_sixty_count: 1,
+        livestock_count: 0,
+        registered_at: Date.now() - 3600000 * 4,
+        sync_status: "SYNCED",
+      },
+    ];
+
+    const demoTriage: EvacueeTriage[] = [
+      {
+        id: "triage-c4b1",
+        household_id: "c4b1-demo-household-01",
+        shelter_id: "OD-KEN-RAJ-001",
+        person_name: "Sunita Nayak (Spouse)",
+        vulnerability_category: "PREGNANT",
+        triage_level: "P1_CRITICAL",
+        notes: "Third trimester pregnancy (32 weeks), gestational hypertension history. Requires ground-floor maternity bay and ANM midwife regular checkup.",
+        created_at: Date.now() - 3600000 * 3,
+      },
+      {
+        id: "triage-9e2a",
+        household_id: "9e2a-demo-household-02",
+        shelter_id: "OD-KEN-RAJ-001",
+        person_name: "Bishnu Charan Das (Head)",
+        vulnerability_category: "ELDERLY_BEDRIDDEN",
+        triage_level: "P1_CRITICAL",
+        notes: "78-year-old bedridden stroke survivor, non-ambulatory. Stretcher access needed. Must assign quiet cot with continuous family attendant.",
+        created_at: Date.now() - 3600000 * 2,
+      },
+      {
+        id: "triage-7f1c",
+        household_id: "7f1c-demo-household-03",
+        shelter_id: "AP-SHELTER-VSP-001",
+        person_name: "Baby Rupa Naidu",
+        vulnerability_category: "INFANT",
+        triage_level: "P2_URGENT",
+        notes: "5-month infant requiring sterile boiled water, mother breastfeeding cubicle, and ORS replenishment kits.",
+        created_at: Date.now() - 3600000 * 1,
+      },
+      {
+        id: "triage-3d4e",
+        household_id: "3d4e-demo-household-04",
+        shelter_id: "AP-SHELTER-WGD-010",
+        person_name: "M. Subba Rao",
+        vulnerability_category: "CHRONIC_MED",
+        triage_level: "P1_CRITICAL",
+        notes: "Severe type-2 diabetes mellitus on daily insulin. Requires cold pack storage for insulin vials and daily blood sugar monitoring.",
+        created_at: Date.now() - 3600000 * 4,
+      },
+    ];
+
+    await db.households.bulkAdd(demoHouseholds);
+    await db.triage.bulkAdd(demoTriage);
   }
 }
 

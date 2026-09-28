@@ -40,25 +40,64 @@ export function encodeQRPayload(data: QRPayloadData): string {
 /**
  * Decodes a scanned pipe-delimited payload back into structured data
  */
-export function decodeQRPayload(rawText: string): QRPayloadData | null {
+export function decodeQRPayload(rawInput: string): QRPayloadData | null {
   try {
-    const parts = rawText.split("|");
-    if (parts.length < 10) return null;
+    let clean = (rawInput || "").trim();
 
-    return {
-      version: parts[0],
-      shelterId: parts[1],
-      shortRef: parts[2],
-      totalMembers: parseInt(parts[3], 10) || 1,
-      maleCount: parseInt(parts[4], 10) || 0,
-      femaleCount: parseInt(parts[5], 10) || 0,
-      infantCount: parseInt(parts[6], 10) || 0,
-      elderlyCount: parseInt(parts[7], 10) || 0,
-      livestockCount: parseInt(parts[8], 10) || 0,
-      triageCode: parts[9],
-      headName: parts[10] || "Unknown",
-      hamletName: parts[11] || "Coastal Hamlet",
-    };
+    // Check if input is base64 encoded
+    if (!clean.includes("|") && clean.length > 20) {
+      try {
+        const decodedB64 = atob(clean);
+        if (decodedB64.includes("|")) {
+          clean = decodedB64;
+        }
+      } catch {
+        // Not valid base64, continue
+      }
+    }
+
+    // Check if input is JSON
+    if (clean.startsWith("{") && clean.endsWith("}")) {
+      try {
+        const json = JSON.parse(clean);
+        return {
+          version: json.version || "V1",
+          shelterId: json.shelterId || json.shelter_id || "OD-KEN-RAJ-001",
+          shortRef: json.shortRef || json.id?.substring(0, 4) || "ref1",
+          totalMembers: Number(json.totalMembers || json.total_members) || 1,
+          maleCount: Number(json.maleCount || json.male_count) || 0,
+          femaleCount: Number(json.femaleCount || json.female_count) || 0,
+          infantCount: Number(json.infantCount || json.child_under_five_count) || 0,
+          elderlyCount: Number(json.elderlyCount || json.elderly_above_sixty_count) || 0,
+          livestockCount: Number(json.livestockCount || json.livestock_count) || 0,
+          triageCode: json.triageCode || json.triage_code || "P3_STD",
+          headName: json.headName || json.head_name || "Unknown",
+          hamletName: json.hamletName || json.hamlet_name || "Coastal Hamlet",
+        };
+      } catch {
+        // Continue to pipe check
+      }
+    }
+
+    const parts = clean.split("|");
+    if (parts.length >= 10) {
+      return {
+        version: parts[0] || "V1",
+        shelterId: parts[1],
+        shortRef: parts[2],
+        totalMembers: parseInt(parts[3], 10) || 1,
+        maleCount: parseInt(parts[4], 10) || 0,
+        femaleCount: parseInt(parts[5], 10) || 0,
+        infantCount: parseInt(parts[6], 10) || 0,
+        elderlyCount: parseInt(parts[7], 10) || 0,
+        livestockCount: parseInt(parts[8], 10) || 0,
+        triageCode: parts[9],
+        headName: parts[10] || "Unknown",
+        hamletName: parts[11] || "Coastal Hamlet",
+      };
+    }
+
+    return null;
   } catch (err) {
     console.error("Failed to decode QR code payload", err);
     return null;

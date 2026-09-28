@@ -50,3 +50,37 @@ body {
   background: #334155;
   border-radius: 3px;
 }
+
+/* QR Scanner styling */
+#qr-reader-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+#qr-reader-container video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 1rem !important;
+}
+
+@keyframes scanLaser {
+  0% {
+    top: 4%;
+    opacity: 0.7;
+  }
+  50% {
+    top: 92%;
+    opacity: 1;
+  }
+  100% {
+    top: 4%;
+    opacity: 0.7;
+  }
+}
+
+.animate-scan-laser {
+  animation: scanLaser 2.2s ease-in-out infinite;
+}
+
