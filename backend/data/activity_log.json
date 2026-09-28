@@ -1,0 +1,50 @@
+[
+  {
+    "id": "act-mul6x681-32dac5",
+    "timestamp": 1790596495297,
+    "type": "ADMIN_LOGIN",
+    "title": "Administrator Authenticated",
+    "description": "Emergency Coordinator logged into Admin Command Center from ::1",
+    "username": "admin"
+  },
+  {
+    "id": "act-mul6wvdx-f5659a",
+    "timestamp": 1790596481253,
+    "type": "ADMIN_LOGIN",
+    "title": "Administrator Authenticated",
+    "description": "Emergency Coordinator logged into Admin Command Center from ::1",
+    "username": "admin"
+  },
+  {
+    "id": "act-mul6q07a-7452e6",
+    "timestamp": 1790596160902,
+    "type": "USER_INACTIVE",
+    "title": "Visitor Became Inactive",
+    "description": "Session test-sess-001 timed out after inactivity",
+    "sessionId": "test-sess-001"
+  },
+  {
+    "id": "act-mul6p08a-83fe56",
+    "timestamp": 1790596114282,
+    "type": "ADMIN_LOGIN",
+    "title": "Administrator Authenticated",
+    "description": "Emergency Coordinator logged into Admin Command Center from ::1",
+    "username": "admin"
+  },
+  {
+    "id": "act-mul6p05p-0e11ce",
+    "timestamp": 1790596114189,
+    "type": "USER_ENTERED",
+    "title": "Visitor Entered Website",
+    "description": "Visitor session test-sess-001 arrived at /scan",
+    "sessionId": "test-sess-001"
+  },
+  {
+    "id": "act-init-01",
+    "type": "SYSTEM_STARTUP",
+    "title": "AshraySetu EOC Online",
+    "description": "Emergency Operations Command Center monitoring initialized",
+    "timestamp": 1790595000000,
+    "sessionId": "system"
+  }
+]

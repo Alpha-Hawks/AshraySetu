@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 
 dotenv.config();
@@ -13,8 +14,34 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Enable CORS with credentials support for admin sessions
+app.use(
+  cors({
+    origin: (origin, callback) => callback(null, true),
+    credentials: true,
+  })
+);
 app.use(express.json());
+
+// Built-in lightweight Cookie Parser
+function parseCookies(req) {
+  const list = {};
+  const cookieHeader = req.headers?.cookie;
+  if (!cookieHeader) return list;
+  cookieHeader.split(";").forEach((cookie) => {
+    let [name, ...rest] = cookie.split("=");
+    name = name?.trim();
+    if (!name) return;
+    const value = rest.join("=").trim();
+    list[name] = decodeURIComponent(value);
+  });
+  return list;
+}
+
+app.use((req, res, next) => {
+  req.cookies = parseCookies(req);
+  next();
+});
 
 // Support Vercel multi-service routing (/api/backend/* -> /api/*)
 app.use((req, res, next) => {
@@ -64,6 +91,324 @@ function saveQRScans() {
     if (err) console.error("Failed to persist QR scans:", err);
   });
 }
+
+// ==========================================
+// ADMIN AUTHENTICATION & SECURITY ENGINE
+// ==========================================
+const adminAuthPath = path.join(__dirname, "data", "admin_auth.json");
+let adminAuth = {
+  username: "admin",
+  password_hash:
+    "c6d236deb4dfc74dbcd9abf9e807c310:610cce5257ae884debe55c09fcd2df28a63123040743c9fb2b640a5315bcf7d784c07e8297949816b1ce92eedb375b9be282cbc2111536e85c50eabd010cd638",
+  role: "DISASTER_OPERATIONS_ADMIN",
+  name: "State Emergency Relief Administrator",
+};
+
+try {
+  if (fs.existsSync(adminAuthPath)) {
+    adminAuth = JSON.parse(fs.readFileSync(adminAuthPath, "utf-8"));
+  }
+} catch (e) {
+  console.warn("Could not load admin_auth.json", e);
+}
+
+// Salted Scrypt Cryptographic Password Verification
+function verifyPassword(password, storedHash) {
+  if (!storedHash || !password) return false;
+  try {
+    const [salt, key] = storedHash.split(":");
+    if (!salt || !key) return false;
+    const derived = crypto.scryptSync(String(password), salt, 64);
+    return crypto.timingSafeEqual(Buffer.from(key, "hex"), derived);
+  } catch (err) {
+    return false;
+  }
+}
+
+// Rate Limiter for Admin Login (Max 5 failed attempts per IP within 10 minutes)
+const loginRateLimit = new Map();
+
+function checkLoginRateLimit(ip) {
+  const now = Date.now();
+  const entry = loginRateLimit.get(ip);
+  if (!entry) return { allowed: true };
+
+  if (entry.lockoutUntil && entry.lockoutUntil > now) {
+    const remainingSeconds = Math.ceil((entry.lockoutUntil - now) / 1000);
+    return {
+      allowed: false,
+      message: `Too many failed attempts. Security lockout active for ${remainingSeconds}s.`,
+      remainingSeconds,
+    };
+  }
+
+  if (now - entry.firstAttempt > 10 * 60 * 1000) {
+    loginRateLimit.delete(ip);
+    return { allowed: true };
+  }
+
+  return { allowed: true };
+}
+
+function recordFailedLogin(ip) {
+  const now = Date.now();
+  const entry = loginRateLimit.get(ip) || {
+    failedAttempts: 0,
+    firstAttempt: now,
+    lockoutUntil: null,
+  };
+  entry.failedAttempts += 1;
+  if (entry.failedAttempts >= 5) {
+    entry.lockoutUntil = now + 5 * 60 * 1000; // 5 minute lockout
+  }
+  loginRateLimit.set(ip, entry);
+}
+
+function clearFailedLogin(ip) {
+  loginRateLimit.delete(ip);
+}
+
+// Active Server-Side Admin Sessions
+const activeAdminSessions = new Map();
+
+function requireAdminAuth(req, res, next) {
+  const token =
+    req.cookies?.ashraysetu_admin_token ||
+    req.headers.authorization?.replace(/^Bearer\s+/i, "") ||
+    req.query.token;
+
+  if (!token) {
+    return res.status(401).json({
+      error: "Authentication required",
+      code: "NO_TOKEN",
+      message: "Please log in to access the Emergency Admin Command Center.",
+    });
+  }
+
+  const session = activeAdminSessions.get(token);
+  if (!session) {
+    return res.status(401).json({
+      error: "Invalid or expired session",
+      code: "INVALID_SESSION",
+      message: "Admin session has expired or is invalid. Please log in again.",
+    });
+  }
+
+  if (Date.now() > session.expiresAt) {
+    activeAdminSessions.delete(token);
+    return res.status(401).json({
+      error: "Session expired",
+      code: "EXPIRED_SESSION",
+      message: "Admin session expired for security. Please log in again.",
+    });
+  }
+
+  session.lastActivity = Date.now();
+  req.admin = session;
+  next();
+}
+
+// ==========================================
+// REAL-TIME PRESENCE & ACTIVITY ENGINE
+// ==========================================
+const liveUserSessions = new Map();
+
+const activityLogPath = path.join(__dirname, "data", "activity_log.json");
+let activityEvents = [];
+try {
+  if (fs.existsSync(activityLogPath)) {
+    activityEvents = JSON.parse(fs.readFileSync(activityLogPath, "utf-8"));
+  }
+} catch {
+  activityEvents = [];
+}
+
+function formatDuration(sec) {
+  if (sec == null || isNaN(sec)) return "00 min 00 sec";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2, "0")} min ${String(s).padStart(2, "0")} sec`;
+}
+
+function logActivityEvent(event) {
+  const entry = {
+    id: `act-${Date.now().toString(36)}-${crypto.randomBytes(3).toString("hex")}`,
+    timestamp: Date.now(),
+    ...event,
+  };
+  activityEvents.unshift(entry);
+  if (activityEvents.length > 200) {
+    activityEvents = activityEvents.slice(0, 200);
+  }
+  fs.writeFile(
+    activityLogPath,
+    JSON.stringify(activityEvents, null, 2),
+    "utf-8",
+    () => {}
+  );
+  broadcastSseUpdate();
+  return entry;
+}
+
+const sseClients = new Set();
+
+function broadcastSseUpdate() {
+  if (sseClients.size === 0) return;
+  const payload = JSON.stringify(getAdminMetricsSnapshot());
+  for (const client of sseClients) {
+    try {
+      client.write(`event: update\ndata: ${payload}\n\n`);
+    } catch {
+      sseClients.delete(client);
+    }
+  }
+}
+
+function getAdminMetricsSnapshot() {
+  const now = Date.now();
+  const onlineThreshold = 35 * 1000;
+  const idleThreshold = 20 * 1000;
+
+  const usersList = [];
+  let liveUsersCount = 0;
+  let activeScannersCount = 0;
+
+  for (const [id, s] of liveUserSessions.entries()) {
+    const elapsed = now - s.lastSeen;
+    let status = "OFFLINE";
+    if (elapsed <= idleThreshold) {
+      status = "ONLINE";
+      liveUsersCount++;
+    } else if (elapsed <= onlineThreshold) {
+      status = "IDLE";
+      liveUsersCount++;
+    }
+
+    if (
+      (status === "ONLINE" || status === "IDLE") &&
+      (s.isScannerActive || s.currentPath === "/scan")
+    ) {
+      activeScannersCount++;
+    }
+
+    if (elapsed <= 10 * 60 * 1000) {
+      usersList.push({
+        id: s.id,
+        currentPath: s.currentPath || "/",
+        activity: s.activity || "Browsing Portal",
+        status,
+        lastSeen: s.lastSeen,
+        firstSeen: s.firstSeen || s.lastSeen,
+        isScannerActive: Boolean(s.isScannerActive),
+        deviceType: s.deviceType || "Web Client",
+      });
+    }
+  }
+
+  usersList.sort((a, b) => b.lastSeen - a.lastSeen);
+
+  const completedArrivals = qrScans.filter(
+    (r) => r.status === "REACHED_SHELTER" && r.qr_scanned_at
+  );
+  const totalShelterArrivals = completedArrivals.reduce(
+    (sum, r) => sum + (Number(r.total_members) || 1),
+    0
+  );
+
+  let avgArrivalSeconds = 0;
+  if (completedArrivals.length > 0) {
+    const totalDuration = completedArrivals.reduce(
+      (sum, r) => sum + (Number(r.arrival_duration_seconds) || 0),
+      0
+    );
+    avgArrivalSeconds = Math.round(totalDuration / completedArrivals.length);
+  }
+
+  const activeScanners = [];
+  for (const u of usersList) {
+    if (
+      (u.status === "ONLINE" || u.status === "IDLE") &&
+      (u.isScannerActive || u.currentPath === "/scan")
+    ) {
+      activeScanners.push({
+        stationId: `GATE-${u.id.slice(-6).toUpperCase()}`,
+        sessionId: u.id,
+        status: "ACTIVE_SCANNER",
+        currentPath: u.currentPath,
+        lastSeen: u.lastSeen,
+        cameraMode: "Live Gate Feed (On-Device Client-Side)",
+        privacyMode: "Zero-Surveillance Encrypted Telemetry",
+      });
+    }
+  }
+
+  return {
+    summary: {
+      live_users: liveUsersCount,
+      active_scanners: activeScannersCount,
+      shelter_arrivals: totalShelterArrivals,
+      shelter_households_count: completedArrivals.length,
+      average_arrival_seconds: avgArrivalSeconds,
+      average_arrival_formatted: formatDuration(avgArrivalSeconds),
+      total_qr_issued: qrScans.length,
+      timestamp: now,
+    },
+    liveUsers: usersList,
+    activeScanners,
+    qrActivity: qrScans.map((r) => ({
+      short_ref: r.short_ref,
+      head_name: r.head_name,
+      hamlet_name: r.hamlet_name,
+      shelter_id: r.shelter_id,
+      total_members: r.total_members,
+      qr_created_at: r.qr_created_at,
+      qr_scanned_at: r.qr_scanned_at,
+      scan_count: r.scan_count || (r.qr_scanned_at ? 1 : 0),
+      latest_scan_time: r.last_scanned_at || r.qr_scanned_at,
+      arrival_duration_seconds: r.arrival_duration_seconds,
+      arrival_duration_formatted: formatDuration(r.arrival_duration_seconds),
+      status: r.status,
+    })),
+    shelterArrivals: completedArrivals.map((r) => ({
+      id: r.id,
+      short_ref: r.short_ref,
+      head_name: r.head_name,
+      hamlet_name: r.hamlet_name,
+      shelter_id: r.shelter_id,
+      total_members: r.total_members,
+      qr_created_at: r.qr_created_at,
+      qr_scanned_at: r.qr_scanned_at,
+      arrival_duration_seconds: r.arrival_duration_seconds,
+      arrival_duration_formatted: formatDuration(r.arrival_duration_seconds),
+      status: r.status,
+      scan_count: r.scan_count || 1,
+    })),
+    activityLog: activityEvents.slice(0, 50),
+    systemTime: now,
+  };
+}
+
+// Background reaper for inactive presence sessions
+setInterval(() => {
+  const now = Date.now();
+  let changed = false;
+  for (const [id, s] of liveUserSessions.entries()) {
+    if (s.status !== "OFFLINE" && now - s.lastSeen > 40000) {
+      s.status = "OFFLINE";
+      s.isScannerActive = false;
+      logActivityEvent({
+        type: "USER_INACTIVE",
+        title: "Visitor Became Inactive",
+        description: `Session ${id.slice(0, 14)} timed out after inactivity`,
+        sessionId: id,
+      });
+      changed = true;
+    }
+  }
+  if (changed) {
+    broadcastSseUpdate();
+  }
+}, 10000);
 
 // Master shelters database (Odisha + Andhra Pradesh)
 const odishaShelters = [
@@ -620,6 +965,14 @@ app.post("/api/qr/create", (req, res) => {
       };
       qrScans.push(record);
       saveQRScans();
+
+      logActivityEvent({
+        type: "QR_CREATED",
+        title: "Evacuation Pass Issued",
+        description: `Pass issued for ${record.head_name} (${record.short_ref}, ${record.total_members} members) destined for ${record.shelter_id}`,
+        short_ref: record.short_ref,
+        head_name: record.head_name,
+      });
     }
 
     res.json({
@@ -670,6 +1023,14 @@ app.post("/api/qr/scan", (req, res) => {
       record.scan_count = (record.scan_count || 1) + 1;
       record.last_scanned_at = serverNow;
       saveQRScans();
+
+      logActivityEvent({
+        type: "QR_SCAN_SUCCESS",
+        title: "QR Pass Re-Scanned",
+        description: `Pass ${record.short_ref} (${record.head_name}) verified again at gate. Total Scans: ${record.scan_count}.`,
+        short_ref: record.short_ref,
+        head_name: record.head_name,
+      });
 
       return res.json({
         success: true,
@@ -734,6 +1095,15 @@ app.post("/api/qr/scan", (req, res) => {
 
     saveQRScans();
 
+    logActivityEvent({
+      type: "SHELTER_ARRIVAL",
+      title: "Citizen Reached Shelter",
+      description: `✓ ${record.head_name} & family (${record.total_members} persons) reached ${record.shelter_id} in ${formatDuration(durationSeconds)}.`,
+      short_ref: record.short_ref,
+      head_name: record.head_name,
+      duration_seconds: durationSeconds,
+    });
+
     res.json({
       success: true,
       duplicate: false,
@@ -775,6 +1145,254 @@ app.get("/api/qr/records", (req, res) => {
     success: true,
     total: qrScans.length,
     records: qrScans,
+  });
+});
+
+// ==========================================
+// REAL-TIME PRESENCE & TELEMETRY ENDPOINTS
+// ==========================================
+
+/**
+ * Client Presence Heartbeat Endpoint
+ * Updates active user tracking, current page, and gate scanner status
+ */
+app.post("/api/presence/heartbeat", (req, res) => {
+  const { sessionId, currentPath, activity, isScannerActive, deviceType } = req.body;
+  if (!sessionId) {
+    return res.status(400).json({ error: "sessionId required" });
+  }
+
+  const now = Date.now();
+  const existing = liveUserSessions.get(sessionId);
+
+  if (!existing) {
+    liveUserSessions.set(sessionId, {
+      id: sessionId,
+      currentPath: currentPath || "/",
+      activity: activity || "Entered Emergency Portal",
+      status: "ONLINE",
+      lastSeen: now,
+      firstSeen: now,
+      isScannerActive: Boolean(isScannerActive),
+      deviceType: deviceType || "Web Browser",
+    });
+
+    logActivityEvent({
+      type: "USER_ENTERED",
+      title: "Visitor Entered Website",
+      description: `Visitor session ${sessionId.slice(0, 14)} arrived at ${currentPath || "/"}`,
+      sessionId,
+    });
+  } else {
+    // Check if scanner was just toggled on
+    if (!existing.isScannerActive && isScannerActive) {
+      logActivityEvent({
+        type: "QR_SCANNER_OPENED",
+        title: "QR Scanner Activated",
+        description: `Session ${sessionId.slice(0, 14)} activated gate camera scanner`,
+        sessionId,
+      });
+    }
+
+    existing.currentPath = currentPath || existing.currentPath;
+    existing.activity = activity || existing.activity;
+    existing.isScannerActive = Boolean(isScannerActive);
+    existing.status = "ONLINE";
+    existing.lastSeen = now;
+    if (deviceType) existing.deviceType = deviceType;
+  }
+
+  broadcastSseUpdate();
+  res.json({ ok: true, timestamp: now });
+});
+
+/**
+ * Client Leave / Unload Endpoint
+ */
+app.post("/api/presence/leave", (req, res) => {
+  const { sessionId } = req.body;
+  if (sessionId && liveUserSessions.has(sessionId)) {
+    const s = liveUserSessions.get(sessionId);
+    s.status = "OFFLINE";
+    s.isScannerActive = false;
+    s.lastSeen = Date.now();
+
+    logActivityEvent({
+      type: "USER_LEFT",
+      title: "Visitor Left Website",
+      description: `Session ${sessionId.slice(0, 14)} departed from portal`,
+      sessionId,
+    });
+    broadcastSseUpdate();
+  }
+  res.json({ ok: true });
+});
+
+// ==========================================
+// SECURE ADMIN AUTHENTICATION ENDPOINTS
+// ==========================================
+
+/**
+ * Admin Login Endpoint
+ * - Enforces IP rate limiting (max 5 failed attempts per 10m)
+ * - Verifies salted scrypt hash
+ * - Issues cryptographically random session token in HttpOnly cookie
+ */
+app.post("/api/admin/login", (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || "127.0.0.1";
+  const rateLimit = checkLoginRateLimit(clientIp);
+
+  if (!rateLimit.allowed) {
+    return res.status(429).json({
+      error: "Too Many Requests",
+      message: rateLimit.message,
+      remainingSeconds: rateLimit.remainingSeconds,
+    });
+  }
+
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password required" });
+  }
+
+  const isValidUser = username === adminAuth.username;
+  const isValidPass = verifyPassword(password, adminAuth.password_hash);
+
+  if (!isValidUser || !isValidPass) {
+    recordFailedLogin(clientIp);
+    return res.status(401).json({
+      error: "Invalid Credentials",
+      message: "Incorrect administrator username or security password.",
+    });
+  }
+
+  // Clear rate limiter upon successful login
+  clearFailedLogin(clientIp);
+
+  // Generate secure cryptographic session token
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = Date.now() + 8 * 60 * 60 * 1000; // 8 hours
+
+  activeAdminSessions.set(token, {
+    token,
+    username: adminAuth.username,
+    name: adminAuth.name,
+    role: adminAuth.role,
+    createdAt: Date.now(),
+    expiresAt,
+    lastActivity: Date.now(),
+    ip: clientIp,
+  });
+
+  // Set Secure HTTP-Only Cookie
+  res.cookie("ashraysetu_admin_token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 8 * 60 * 60 * 1000,
+    path: "/",
+  });
+
+  logActivityEvent({
+    type: "ADMIN_LOGIN",
+    title: "Administrator Authenticated",
+    description: `Emergency Coordinator logged into Admin Command Center from ${clientIp}`,
+    username: adminAuth.username,
+  });
+
+  res.json({
+    success: true,
+    token,
+    user: {
+      username: adminAuth.username,
+      name: adminAuth.name,
+      role: adminAuth.role,
+      expiresAt,
+    },
+  });
+});
+
+/**
+ * Admin Logout Endpoint
+ */
+app.post("/api/admin/logout", (req, res) => {
+  const token =
+    req.cookies?.ashraysetu_admin_token ||
+    req.headers.authorization?.replace(/^Bearer\s+/i, "");
+
+  if (token) {
+    activeAdminSessions.delete(token);
+  }
+
+  res.clearCookie("ashraysetu_admin_token", { path: "/" });
+
+  logActivityEvent({
+    type: "ADMIN_LOGOUT",
+    title: "Administrator Logged Out",
+    description: "Emergency Administrator signed out of command session",
+  });
+
+  res.json({ success: true, message: "Logged out successfully" });
+});
+
+/**
+ * Admin Session Validation Endpoint
+ */
+app.get("/api/admin/me", requireAdminAuth, (req, res) => {
+  res.json({
+    authenticated: true,
+    user: {
+      username: req.admin.username,
+      name: req.admin.name,
+      role: req.admin.role,
+      expiresAt: req.admin.expiresAt,
+    },
+  });
+});
+
+/**
+ * Admin Real-Time Metrics & Aggregate State Snapshot
+ */
+app.get("/api/admin/metrics", requireAdminAuth, (req, res) => {
+  res.json(getAdminMetricsSnapshot());
+});
+
+/**
+ * Admin Real-Time Server-Sent Events (SSE) Stream
+ */
+app.get("/api/admin/stream", (req, res) => {
+  const token =
+    req.cookies?.ashraysetu_admin_token ||
+    req.headers.authorization?.replace(/^Bearer\s+/i, "") ||
+    req.query.token;
+
+  if (!token || !activeAdminSessions.has(token)) {
+    return res.status(401).json({
+      error: "Unauthorized access to real-time telemetry stream",
+    });
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+
+  res.write(`: connected\n\n`);
+  const initialPayload = JSON.stringify(getAdminMetricsSnapshot());
+  res.write(`event: init\ndata: ${initialPayload}\n\n`);
+
+  sseClients.add(res);
+
+  const pinger = setInterval(() => {
+    res.write(`: ping\n\n`);
+  }, 15000);
+
+  req.on("close", () => {
+    clearInterval(pinger);
+    sseClients.delete(res);
   });
 });
 

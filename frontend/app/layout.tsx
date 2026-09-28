@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Header from "@/components/common/Header";
+import UserSessionTracker from "@/components/common/UserSessionTracker";
 
 export const metadata: Metadata = {
   title: "AshraySetu - Cyclone Shelter & Evacuation Management",
@@ -25,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased">
+        <UserSessionTracker />
         <Header />
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
           {children}

@@ -485,6 +485,11 @@ export default function ScanPage() {
     setIsCameraLoading(false);
     setTorchOn(false);
     setActiveCameraLabel("");
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("ashraysetu_scanner_state", { detail: { active: false } })
+      );
+    }
   };
 
   // Start Camera with Automatic Hardware Device Discovery & Cascading Fallback
@@ -609,6 +614,11 @@ export default function ScanPage() {
       setIsCameraLoading(false);
       isScanningActiveRef.current = true;
       isProcessingScanRef.current = false;
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("ashraysetu_scanner_state", { detail: { active: true } })
+        );
+      }
 
       // Force video sizing to fill viewport cleanly
       const videoEl = document.querySelector<HTMLVideoElement>(

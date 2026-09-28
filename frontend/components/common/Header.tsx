@@ -75,6 +75,7 @@ export default function Header() {
     { href: "/map", label: t.navMap, icon: MapPin },
     { href: "/dashboard", label: t.navDashboard, icon: LayoutDashboard },
     { href: "/andhra-pradesh", label: t.navAP, icon: Waves, badge: "AP" },
+    { href: "/admin/dashboard", label: "Admin Live EOC", icon: ShieldCheck, badge: "EOC" },
   ];
 
   return (
@@ -139,15 +140,27 @@ export default function Header() {
           </div>
         </Link>
 
-        {/* Multi-Language Switcher (EN -> OR -> TE) */}
-        <button
-          onClick={toggleLanguage}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold border border-slate-700 transition"
-          title="Click to switch language: English / ଓଡ଼ିଆ / తెలుగు"
-        >
-          <Globe className="w-3.5 h-3.5 text-sky-400" />
-          <span>{getLanguageLabel()}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Multi-Language Switcher (EN -> OR -> TE) */}
+          <button
+            onClick={toggleLanguage}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold border border-slate-700 transition"
+            title="Click to switch language: English / ଓଡ଼ିଆ / తెలుగు"
+          >
+            <Globe className="w-3.5 h-3.5 text-sky-400" />
+            <span>{getLanguageLabel()}</span>
+          </button>
+
+          {/* Secure Admin Portal Link */}
+          <Link
+            href="/admin/dashboard"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-700/60 text-red-200 text-xs font-bold transition shadow-sm"
+            title="Secure Emergency Operation Center Admin Dashboard"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-red-400" />
+            <span>Admin EOC</span>
+          </Link>
+        </div>
       </div>
 
       {/* Sub-Navigation for Field & Command Views */}

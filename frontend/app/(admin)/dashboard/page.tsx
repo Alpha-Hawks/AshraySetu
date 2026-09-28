@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   LayoutDashboard,
   Users,
@@ -126,13 +127,22 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <button
-          onClick={refreshDashboardData}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 self-start sm:self-auto"
-        >
-          <RefreshCw className="w-3.5 h-3.5 text-sky-400" />
-          <span>Refresh Live Snapshot</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <Link
+            href="/admin/dashboard"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white shadow-lg shadow-red-600/30 transition"
+          >
+            <ShieldAlert className="w-4 h-4 text-white" />
+            <span>Launch Secure Real-Time Admin Dashboard →</span>
+          </Link>
+          <button
+            onClick={refreshDashboardData}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-sky-400" />
+            <span>Refresh Snapshot</span>
+          </button>
+        </div>
       </div>
 
       {telegramStatus && (
