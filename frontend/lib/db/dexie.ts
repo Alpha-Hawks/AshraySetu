@@ -32,6 +32,10 @@ export interface Household {
   livestock_count: number;
   registered_at: number; // epoch ms
   sync_status: "PENDING_SYNC" | "SYNCED" | "CONFLICT";
+  qr_created_at?: number;
+  qr_scanned_at?: number;
+  arrival_duration_seconds?: number;
+  status?: string;
 }
 
 export interface EvacueeTriage {
@@ -123,6 +127,10 @@ export interface ShelterAdmission {
   clinical_notes?: string;
   ration_water_litres?: number;
   ration_food_packets?: number;
+  qr_created_at?: number;
+  qr_scanned_at?: number;
+  arrival_duration_seconds?: number;
+  status?: string;
 }
 
 export class AshraySetuDatabase extends Dexie {

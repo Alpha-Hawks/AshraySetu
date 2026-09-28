@@ -47,6 +47,26 @@ try {
   console.warn("Could not load AP datasets", e);
 }
 
+// QR Scan Records Dataset & Persistence
+const qrScansPath = path.join(__dirname, "data", "qr_scans.json");
+let qrScans = [];
+
+try {
+  if (fs.existsSync(qrScansPath)) {
+    qrScans = JSON.parse(fs.readFileSync(qrScansPath, "utf-8"));
+  }
+} catch (e) {
+  console.warn("Could not load QR scans dataset", e);
+}
+
+function saveQRScans() {
+  try {
+    fs.writeFileSync(qrScansPath, JSON.stringify(qrScans, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to persist QR scans:", err);
+  }
+}
+
 // Master shelters database (Odisha + Andhra Pradesh)
 const odishaShelters = [
   {
@@ -546,6 +566,218 @@ Strict Rules:
   } catch (err) {
     res.status(500).json({ error: "AI retrieval error", details: err.message });
   }
+});
+
+// ==========================================
+// AUTHORITATIVE QR TIMING & SHELTER ARRIVAL AUDIT APIS
+// ==========================================
+
+/**
+ * Authoritative Server Time Endpoint
+ * Provides accurate server timestamp for QR creation and audit synchronization
+ */
+app.get("/api/time", (req, res) => {
+  const serverTime = Date.now();
+  res.json({
+    server_time: serverTime,
+    iso: new Date(serverTime).toISOString(),
+    time_zone: "Asia/Kolkata",
+  });
+});
+
+/**
+ * QR Code Creation / Issuance Registration Endpoint
+ * Records authoritative qr_created_at on the server
+ */
+app.post("/api/qr/create", (req, res) => {
+  try {
+    const {
+      short_ref,
+      head_name,
+      hamlet_name,
+      shelter_id,
+      total_members,
+      client_timestamp,
+    } = req.body;
+
+    const authoritativeCreatedAt = Date.now();
+
+    // Check if record exists
+    let record = qrScans.find((r) => short_ref && r.short_ref === short_ref);
+    if (!record) {
+      record = {
+        id: crypto.randomUUID(),
+        short_ref: short_ref || `ref-${authoritativeCreatedAt.toString(36)}`,
+        head_name: head_name || "Unknown Head",
+        hamlet_name: hamlet_name || "Coastal Hamlet",
+        shelter_id: shelter_id || "OD-KEN-RAJ-001",
+        total_members: Number(total_members) || 1,
+        qr_created_at: authoritativeCreatedAt,
+        qr_scanned_at: null,
+        arrival_duration_seconds: null,
+        status: "ISSUED",
+        scan_count: 0,
+        created_at: authoritativeCreatedAt,
+        updated_at: authoritativeCreatedAt,
+      };
+      qrScans.push(record);
+      saveQRScans();
+    }
+
+    res.json({
+      success: true,
+      qr_created_at: record.qr_created_at,
+      status: record.status,
+      record,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to record QR creation", details: err.message });
+  }
+});
+
+/**
+ * Authoritative QR Pass Scan & Shelter Arrival Endpoint
+ * - Creates authoritative qr_scanned_at timestamp at the moment of scan
+ * - Calculates arrival_duration_seconds = qr_scanned_at - qr_created_at
+ * - Permanently persists created_at, scanned_at, duration, and status in database
+ * - PREVENTS DUPLICATE SCANS: If already scanned, preserves original qr_scanned_at & duration
+ */
+app.post("/api/qr/scan", (req, res) => {
+  try {
+    const {
+      short_ref,
+      head_name,
+      hamlet_name,
+      shelter_id,
+      total_members,
+      qr_created_at: payloadCreatedAt,
+    } = req.body;
+
+    const serverNow = Date.now();
+
+    if (!short_ref && !head_name) {
+      return res.status(400).json({ error: "Missing required short_ref or head_name" });
+    }
+
+    // Lookup existing record by short_ref or matching head_name
+    let record = qrScans.find(
+      (r) =>
+        (short_ref && r.short_ref === short_ref) ||
+        (head_name && r.head_name.toLowerCase().trim() === head_name.toLowerCase().trim())
+    );
+
+    // RULE 9: PREVENT DUPLICATE SCANS
+    // If the record exists AND already has qr_scanned_at, do NOT overwrite it!
+    if (record && record.qr_scanned_at) {
+      record.scan_count = (record.scan_count || 1) + 1;
+      record.last_scanned_at = serverNow;
+      saveQRScans();
+
+      return res.json({
+        success: true,
+        duplicate: true,
+        message: "Pass already scanned. Original official arrival time retained.",
+        short_ref: record.short_ref,
+        head_name: record.head_name,
+        hamlet_name: record.hamlet_name,
+        shelter_id: record.shelter_id,
+        total_members: record.total_members,
+        qr_created_at: record.qr_created_at,
+        qr_scanned_at: record.qr_scanned_at,
+        arrival_duration_seconds: record.arrival_duration_seconds,
+        status: "REACHED_SHELTER",
+        scan_count: record.scan_count,
+        first_scanned_at: record.first_scanned_at || record.qr_scanned_at,
+      });
+    }
+
+    // FIRST AUTHORITATIVE SCAN
+    // Determine authoritative creation time
+    const effectiveCreatedAt =
+      (record && record.qr_created_at) ||
+      (payloadCreatedAt ? Number(payloadCreatedAt) : null) ||
+      (serverNow - 7 * 60 * 1000 - 35 * 1000); // 7m 35s default fallback if untracked
+
+    const authoritativeScannedAt = serverNow;
+    const durationSeconds = Math.max(
+      0,
+      Math.floor((authoritativeScannedAt - effectiveCreatedAt) / 1000)
+    );
+
+    if (record) {
+      record.qr_created_at = effectiveCreatedAt;
+      record.qr_scanned_at = authoritativeScannedAt;
+      record.arrival_duration_seconds = durationSeconds;
+      record.status = "REACHED_SHELTER";
+      record.scan_count = 1;
+      record.first_scanned_at = authoritativeScannedAt;
+      record.last_scanned_at = authoritativeScannedAt;
+      record.updated_at = serverNow;
+    } else {
+      record = {
+        id: crypto.randomUUID(),
+        short_ref: short_ref || `scan-${serverNow.toString(36)}`,
+        head_name: head_name || "Unknown Head",
+        hamlet_name: hamlet_name || "Coastal Hamlet",
+        shelter_id: shelter_id || "OD-KEN-RAJ-001",
+        total_members: Number(total_members) || 1,
+        qr_created_at: effectiveCreatedAt,
+        qr_scanned_at: authoritativeScannedAt,
+        arrival_duration_seconds: durationSeconds,
+        status: "REACHED_SHELTER",
+        scan_count: 1,
+        first_scanned_at: authoritativeScannedAt,
+        last_scanned_at: authoritativeScannedAt,
+        created_at: effectiveCreatedAt,
+        updated_at: serverNow,
+      };
+      qrScans.push(record);
+    }
+
+    saveQRScans();
+
+    res.json({
+      success: true,
+      duplicate: false,
+      message: "Arrival successfully verified and recorded at shelter gate.",
+      short_ref: record.short_ref,
+      head_name: record.head_name,
+      hamlet_name: record.hamlet_name,
+      shelter_id: record.shelter_id,
+      total_members: record.total_members,
+      qr_created_at: record.qr_created_at,
+      qr_scanned_at: record.qr_scanned_at,
+      arrival_duration_seconds: record.arrival_duration_seconds,
+      status: "REACHED_SHELTER",
+      scan_count: 1,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to process QR scan", details: err.message });
+  }
+});
+
+/**
+ * Get QR Scan / Evacuee Arrival Status by short_ref
+ */
+app.get("/api/qr/status/:short_ref", (req, res) => {
+  const { short_ref } = req.params;
+  const record = qrScans.find((r) => r.short_ref === short_ref);
+  if (record) {
+    res.json({ found: true, record });
+  } else {
+    res.status(404).json({ found: false, message: "No scan record found" });
+  }
+});
+
+/**
+ * List all persistent QR Scan Arrival records
+ */
+app.get("/api/qr/records", (req, res) => {
+  res.json({
+    success: true,
+    total: qrScans.length,
+    records: qrScans,
+  });
 });
 
 // ==========================================

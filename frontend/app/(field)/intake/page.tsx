@@ -14,11 +14,35 @@ import {
   Accessibility,
   Activity,
   X,
+  Clock,
 } from "lucide-react";
 import { db, initializeDatabase, type Shelter } from "@/lib/db/dexie";
 import { translations, type Language } from "@/lib/locales/translations";
 import { encodeQRPayload, generateQRCodeDataURL } from "@/lib/qr/codec";
 import { syncManager } from "@/lib/sync/syncManager";
+
+/**
+ * Format timestamp as exact hh:mm:ss A (e.g. 04:05:32 PM)
+ */
+function formatClockTime(
+  dateVal: number | string | Date | undefined | null,
+  targetTimeZone = "Asia/Kolkata"
+): string {
+  if (!dateVal) return "N/A";
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "N/A";
+    return d.toLocaleTimeString("en-US", {
+      timeZone: targetTimeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return String(dateVal);
+  }
+}
 
 export default function IntakePage() {
   const [lang, setLang] = useState<Language>("en");
@@ -45,6 +69,7 @@ export default function IntakePage() {
     qrUrl: string;
     payloadText: string;
     familySummary: string;
+    createdAt: number;
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
@@ -106,7 +131,41 @@ export default function IntakePage() {
       triageCode = vulnerability === "INFANT" ? "P2_INF" : "P2_DIS";
     }
 
-    // Save household to IndexedDB
+    // 1. Authoritative Server Timestamp Retrieval (Rule 1: Server time, not only browser clock)
+    let authoritativeCreatedAt = Date.now();
+    try {
+      const tRes = await fetch("/api/time");
+      if (tRes.ok) {
+        const tData = await tRes.json();
+        if (tData.server_time) authoritativeCreatedAt = tData.server_time;
+      }
+    } catch {
+      // offline fallback
+    }
+
+    // 2. Authoritative QR Creation Record on Backend
+    try {
+      const createRes = await fetch("/api/qr/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          short_ref: shortRef,
+          head_name: headName.trim(),
+          hamlet_name: hamletName.trim() || "Coastal Hamlet",
+          shelter_id: selectedShelterId,
+          total_members: Number(totalMembers),
+          client_timestamp: authoritativeCreatedAt,
+        }),
+      });
+      if (createRes.ok) {
+        const createData = await createRes.json();
+        if (createData.qr_created_at) authoritativeCreatedAt = createData.qr_created_at;
+      }
+    } catch {
+      // offline fallback
+    }
+
+    // Save household to IndexedDB with authoritative timestamps
     const householdRecord = {
       id: householdId,
       shelter_id: selectedShelterId,
@@ -119,7 +178,9 @@ export default function IntakePage() {
       child_under_five_count: Number(infantCount),
       elderly_above_sixty_count: Number(elderlyCount),
       livestock_count: Number(livestockCount),
-      registered_at: Date.now(),
+      registered_at: authoritativeCreatedAt,
+      qr_created_at: authoritativeCreatedAt,
+      status: "ISSUED",
       sync_status: "PENDING_SYNC" as const,
     };
 
@@ -135,7 +196,7 @@ export default function IntakePage() {
         vulnerability_category: vulnerability as any,
         triage_level: triageLevel,
         notes: clinicalNotes.trim(),
-        created_at: Date.now(),
+        created_at: authoritativeCreatedAt,
       });
     }
 
@@ -155,7 +216,7 @@ export default function IntakePage() {
       householdRecord
     );
 
-    // Generate compact QR Payload
+    // Generate compact QR Payload with authoritative creation timestamp
     const qrPayload = encodeQRPayload({
       version: "V1",
       shelterId: selectedShelterId,
@@ -169,7 +230,7 @@ export default function IntakePage() {
       triageCode,
       headName,
       hamletName,
-      createdAt: householdRecord.registered_at,
+      createdAt: authoritativeCreatedAt,
     });
 
     const qrDataUrl = await generateQRCodeDataURL(qrPayload);
@@ -178,6 +239,7 @@ export default function IntakePage() {
       qrUrl: qrDataUrl,
       payloadText: qrPayload,
       familySummary: `${headName} • ${totalMembers} Members • ${hamletName || "Ward " + wardNumber}`,
+      createdAt: authoritativeCreatedAt,
     });
 
     // Reset form inputs
@@ -555,6 +617,10 @@ export default function IntakePage() {
               <p className="text-xs text-emerald-400 font-semibold mt-0.5">
                 {qrModalData.familySummary}
               </p>
+              <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950 border border-sky-500/40 text-sky-300 text-xs font-mono font-bold shadow-inner">
+                <Clock className="w-3.5 h-3.5 text-sky-400" />
+                <span>QR Created At: {formatClockTime(qrModalData.createdAt)}</span>
+              </div>
             </div>
 
             {/* Rendered QR Canvas */}

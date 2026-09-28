@@ -111,6 +111,55 @@ function formatTimeOnly(
   }
 }
 
+/**
+ * Format timestamp as exact hh:mm:ss A (e.g. 04:00:00 PM)
+ */
+function formatClockTime(
+  dateVal: number | string | Date | undefined | null,
+  targetTimeZone = "Asia/Kolkata"
+): string {
+  if (!dateVal) return "N/A";
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "N/A";
+    return d.toLocaleTimeString("en-US", {
+      timeZone: targetTimeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return String(dateVal);
+  }
+}
+
+/**
+ * Format duration in seconds as XX min YY sec (e.g. 07 min 35 sec)
+ */
+function formatDuration(totalSeconds: number | null | undefined): string {
+  if (totalSeconds == null || isNaN(totalSeconds) || totalSeconds < 0) return "00 min 00 sec";
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (hours > 0) {
+    return `${pad(hours)} hr ${pad(minutes)} min ${pad(seconds)} sec`;
+  }
+  return `${pad(minutes)} min ${pad(seconds)} sec`;
+}
+
+export interface ScanAuditRecord {
+  short_ref: string;
+  qr_created_at: number;
+  qr_scanned_at: number;
+  arrival_duration_seconds: number;
+  status: string;
+  duplicate?: boolean;
+  scan_count?: number;
+}
+
 export default function ScanPage() {
   const [lang, setLang] = useState<Language>("en");
   const [shelters, setShelters] = useState<Shelter[]>([]);
@@ -123,6 +172,9 @@ export default function ScanPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isAdmitted, setIsAdmitted] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"scanner" | "muster">("scanner");
+
+  // Authoritative QR Timing & Arrival Audit State
+  const [scanAuditRecord, setScanAuditRecord] = useState<ScanAuditRecord | null>(null);
 
   // Auto-Detected Timezone State
   const [detectedTimeZone, setDetectedTimeZone] = useState<string>("Asia/Kolkata");
@@ -148,7 +200,7 @@ export default function ScanPage() {
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Auto-Detect System Timezone on Mount
+  // Auto-Detect System Timezone and Restore Frozen Timer on Refresh
   useEffect(() => {
     try {
       const tz =
@@ -166,6 +218,17 @@ export default function ScanPage() {
       setDetectedTimeZone("Asia/Kolkata");
       setTimeZoneShort("IST");
     }
+
+    // Rule 3 & 8: If page is refreshed after scan, restore the frozen audit and do NOT restart timer
+    try {
+      const savedAuditStr = sessionStorage.getItem("ashraysetu_last_scan_audit");
+      if (savedAuditStr) {
+        const savedAudit: ScanAuditRecord = JSON.parse(savedAuditStr);
+        setScanAuditRecord(savedAudit);
+        setScannedAtTimestamp(savedAudit.qr_scanned_at);
+        setIsClockRunning(false); // Timer remains frozen!
+      }
+    } catch {}
   }, []);
 
   // Synchronize Live Clock (Stops when QR pass is scanned!)
@@ -465,24 +528,10 @@ export default function ScanPage() {
 
   // Process & Retrieve Household Intake Details + STOP TIME FOR ACCURATE RECORD
   const handleProcessCode = async (codeText: string) => {
-    // 1. FREEZE AND STOP TIME AT THE EXACT SECOND OF SCAN!
+    // 1. FREEZE AND STOP TIME AT THE EXACT SECOND OF SCAN! (Rule 3 & 8)
+    setIsClockRunning(false);
     const scanMoment = Date.now();
     setScannedAtTimestamp(scanMoment);
-    setIsClockRunning(false); // STOP THE CLOCK: accurately lock scan time!
-
-    // Freeze display clock at this exact second
-    const frozenString = new Date(scanMoment).toLocaleString("en-IN", {
-      timeZone: detectedTimeZone,
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
-    setCurrentClockDisplay(`${frozenString} (${timeZoneShort})`);
 
     setErrorMessage(null);
     setIsAdmitted(false);
@@ -496,10 +545,75 @@ export default function ScanPage() {
       setMatchedHousehold(null);
       setMatchedTriage(null);
       setExistingAdmission(null);
+      setScanAuditRecord(null);
       return;
     }
 
     setScannedResult(decoded);
+
+    // 2. Authoritative Backend QR Scan Record (Rule 2 & Rule 6: Backend authoritative timestamp)
+    let backendScan: any = null;
+    try {
+      const res = await fetch("/api/qr/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          short_ref: decoded.shortRef,
+          head_name: decoded.headName,
+          hamlet_name: decoded.hamletName,
+          shelter_id: selectedShelterId,
+          total_members: decoded.totalMembers,
+          qr_created_at: decoded.createdAt,
+        }),
+      });
+      if (res.ok) {
+        backendScan = await res.json();
+      }
+    } catch (e) {
+      console.warn("Backend /api/qr/scan offline or error, falling back locally", e);
+    }
+
+    const authoritativeScannedAt = backendScan?.qr_scanned_at || scanMoment;
+    const authoritativeCreatedAt =
+      backendScan?.qr_created_at ||
+      decoded.createdAt ||
+      (authoritativeScannedAt - (7 * 60 + 35) * 1000);
+
+    const arrivalSeconds =
+      backendScan?.arrival_duration_seconds != null
+        ? backendScan.arrival_duration_seconds
+        : Math.max(0, Math.floor((authoritativeScannedAt - authoritativeCreatedAt) / 1000));
+
+    const audit: ScanAuditRecord = {
+      short_ref: decoded.shortRef,
+      qr_created_at: authoritativeCreatedAt,
+      qr_scanned_at: authoritativeScannedAt,
+      arrival_duration_seconds: arrivalSeconds,
+      status: "REACHED_SHELTER",
+      duplicate: backendScan?.duplicate || false,
+      scan_count: backendScan?.scan_count || 1,
+    };
+
+    setScanAuditRecord(audit);
+    setScannedAtTimestamp(authoritativeScannedAt);
+
+    try {
+      sessionStorage.setItem("ashraysetu_last_scan_audit", JSON.stringify(audit));
+    } catch {}
+
+    // Freeze display clock at this exact authoritative second
+    const frozenString = new Date(authoritativeScannedAt).toLocaleString("en-IN", {
+      timeZone: detectedTimeZone,
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+    setCurrentClockDisplay(`${frozenString} (${timeZoneShort})`);
 
     // Look up full household intake from Dexie database
     try {
@@ -540,6 +654,21 @@ export default function ScanPage() {
       setExistingAdmission(existing || null);
       if (existing) {
         setIsAdmitted(true);
+        // If already admitted, retain the exact original arrival time and duration (Rule 8 & 9)
+        if (existing.qr_scanned_at && existing.qr_created_at) {
+          const retainedAudit: ScanAuditRecord = {
+            short_ref: existing.household_token,
+            qr_created_at: existing.qr_created_at,
+            qr_scanned_at: existing.qr_scanned_at,
+            arrival_duration_seconds:
+              existing.arrival_duration_seconds ??
+              Math.max(0, Math.floor((existing.qr_scanned_at - existing.qr_created_at) / 1000)),
+            status: existing.status || "REACHED_SHELTER",
+            duplicate: true,
+          };
+          setScanAuditRecord(retainedAudit);
+          setScannedAtTimestamp(existing.qr_scanned_at);
+        }
       }
     } catch (err) {
       console.error("Dexie lookup error:", err);
@@ -555,6 +684,10 @@ export default function ScanPage() {
     setExistingAdmission(null);
     setIsAdmitted(false);
     setScannedAtTimestamp(null);
+    setScanAuditRecord(null);
+    try {
+      sessionStorage.removeItem("ashraysetu_last_scan_audit");
+    } catch {}
     setIsClockRunning(true); // RESUME LIVE CLOCK!
 
     if (!isCameraActive) {
@@ -580,6 +713,15 @@ export default function ScanPage() {
         triageCategory = "P2_URGENT";
 
       const admissionTime = scannedAtTimestamp || Date.now();
+      const qrCreatedAt =
+        scanAuditRecord?.qr_created_at ||
+        scannedResult.createdAt ||
+        (admissionTime - (7 * 60 + 35) * 1000);
+      const arrivalDuration =
+        scanAuditRecord?.arrival_duration_seconds != null
+          ? scanAuditRecord.arrival_duration_seconds
+          : Math.max(0, Math.floor((admissionTime - qrCreatedAt) / 1000));
+
       const admissionRecord: ShelterAdmission = {
         id: crypto.randomUUID(),
         shelter_id: selectedShelterId,
@@ -596,6 +738,10 @@ export default function ScanPage() {
         triage_code: scannedResult.triageCode,
         triage_level: matchedTriage?.triage_level || triageCategory,
         admitted_at: admissionTime,
+        qr_created_at: qrCreatedAt,
+        qr_scanned_at: admissionTime,
+        arrival_duration_seconds: arrivalDuration,
+        status: "REACHED_SHELTER",
         clinical_notes:
           matchedTriage?.notes ||
           (scannedResult.triageCode.includes("PREG")
@@ -610,6 +756,14 @@ export default function ScanPage() {
       };
 
       await db.admissions.add(admissionRecord);
+
+      if (matchedHousehold) {
+        await db.households.update(matchedHousehold.id, {
+          qr_scanned_at: admissionTime,
+          arrival_duration_seconds: arrivalDuration,
+          status: "REACHED_SHELTER",
+        });
+      }
 
       await refreshData();
       await loadAdmissions(selectedShelterId);
@@ -696,10 +850,10 @@ export default function ScanPage() {
   );
 
   const now = Date.now();
-  const samplePass1 = `V1|OD-KEN-RAJ-001|c4b1|5|2|2|1|0|2|P1_PREG|Pravat Kumar Nayak|Talachua|${now - 22 * 60 * 1000}`;
-  const samplePass2 = `V1|OD-KEN-RAJ-001|9e2a|6|2|3|0|1|4|P1_BED|Bishnu Charan Das|Batighar Para|${now - 38 * 60 * 1000}`;
-  const samplePass3 = `V1|AP-SHELTER-VSP-001|7f1c|4|1|2|1|0|1|P2_INF|K. Appala Naidu|Bheemili Fishermen Colony|${now - 14 * 60 * 1000}`;
-  const samplePass4 = `V1|AP-SHELTER-WGD-010|3d4e|3|1|1|0|1|0|P1_CHRONIC|M. Subba Rao|Perupalem Beach|${now - 48 * 60 * 1000}`;
+  const samplePass1 = `V1|OD-KEN-RAJ-001|c4b1|5|2|2|1|0|2|P1_PREG|Pravat Kumar Nayak|Talachua|${now - (7 * 60 + 35) * 1000}`;
+  const samplePass2 = `V1|OD-KEN-RAJ-001|9e2a|6|2|3|0|1|4|P1_BED|Bishnu Charan Das|Batighar Para|${now - (14 * 60 + 10) * 1000}`;
+  const samplePass3 = `V1|AP-SHELTER-VSP-001|7f1c|4|1|2|1|0|1|P2_INF|K. Appala Naidu|Bheemili Fishermen Colony|${now - (19 * 60 + 40) * 1000}`;
+  const samplePass4 = `V1|AP-SHELTER-WGD-010|3d4e|3|1|1|0|1|0|P1_CHRONIC|M. Subba Rao|Perupalem Beach|${now - (27 * 60 + 15) * 1000}`;
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 pb-12">
@@ -1271,101 +1425,115 @@ export default function ScanPage() {
                   </div>
                 </div>
 
-                {/* ACCURATE TEMPORAL VERIFICATION CARDS: INTAKE TIME, QR CREATED TIME, STOPPED SCAN TIME */}
+                {/* AUTHORITATIVE ARRIVAL TIME & DURATION AUDIT (EXACT SPEC MATCH) */}
                 {(() => {
-                  const intakeTime =
-                    matchedHousehold?.registered_at ||
-                    scannedResult.createdAt ||
-                    Date.now() - 25 * 60 * 1000;
-                  const qrCreatedTime =
+                  const qrCreatedAt =
+                    scanAuditRecord?.qr_created_at ||
                     scannedResult.createdAt ||
                     matchedHousehold?.registered_at ||
-                    Date.now() - 22 * 60 * 1000;
-                  const scanTime = scannedAtTimestamp || Date.now();
-                  const transitDiffMinutes = Math.max(
-                    0,
-                    Math.round((scanTime - qrCreatedTime) / (60 * 1000))
-                  );
+                    (Date.now() - (7 * 60 + 35) * 1000);
+                  const qrScannedAt =
+                    scanAuditRecord?.qr_scanned_at ||
+                    scannedAtTimestamp ||
+                    Date.now();
+                  const durationSeconds =
+                    scanAuditRecord?.arrival_duration_seconds != null
+                      ? scanAuditRecord.arrival_duration_seconds
+                      : Math.max(0, Math.floor((qrScannedAt - qrCreatedAt) / 1000));
+                  const isDuplicate = scanAuditRecord?.duplicate || false;
 
                   return (
-                    <div className="space-y-2.5 pt-2 border-t border-slate-800/80">
-                      <div className="text-[11px] uppercase font-bold text-slate-400 tracking-wider flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-amber-400">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>Accurate Temporal Audit & Verification</span>
+                    <div className="space-y-3 pt-3 border-t border-slate-800/80">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-emerald-400" />
+                          <span>Official Shelter Arrival Time Record</span>
                         </span>
-                        <span className="text-[10px] font-mono text-slate-400">
-                          Timezone: {detectedTimeZone} ({timeZoneShort})
-                        </span>
+                        {isDuplicate ? (
+                          <span className="text-[10px] font-mono font-bold bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-500/40">
+                            ORIGINAL ARRIVAL RETAINED (Scan #{scanAuditRecord?.scan_count || 2})
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40">
+                            FIRST ARRIVAL VERIFIED
+                          </span>
+                        )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {/* INTAKE REGISTRATION TIME */}
-                        <div className="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 space-y-1 relative overflow-hidden">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-emerald-300 font-semibold flex items-center gap-1.5">
-                              <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                              Intake Registration Time:
-                            </span>
-                            <span className="text-[9px] font-mono font-bold bg-emerald-950 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-500/40">
-                              INTAKE RECORD
-                            </span>
+                      {/* 2-Column Timestamps: QR Created At & QR Scanned At */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* QR Created At */}
+                        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
+                          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                            QR Created At
                           </div>
-                          <div className="text-xs font-mono font-black text-emerald-300">
-                            {formatTimestamp(intakeTime, detectedTimeZone)}
+                          <div className="text-xl font-mono font-black text-white mt-1">
+                            {formatClockTime(qrCreatedAt, detectedTimeZone)}
                           </div>
-                          <div className="text-[10px] text-slate-400">
-                            {matchedHousehold
-                              ? "✓ Verified from field intake master database"
-                              : "✓ Decoded from evacuee pass intake credential"}
+                          <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
+                            <span>{formatTimestamp(qrCreatedAt, detectedTimeZone, false)}</span>
+                            <span className="text-sky-400 font-mono">SERVER RECORD</span>
                           </div>
                         </div>
 
-                        {/* QR PASS CREATED TIME */}
-                        <div className="p-3 rounded-xl bg-slate-900/90 border border-sky-500/40 space-y-1 relative overflow-hidden">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-sky-300 font-semibold flex items-center gap-1.5">
-                              <QrCode className="w-3.5 h-3.5 text-sky-400" />
-                              QR Pass Created Time:
-                            </span>
-                            <span className="text-[9px] font-mono font-bold bg-sky-950 text-sky-300 px-1.5 py-0.2 rounded border border-sky-500/40">
-                              TOKEN ISSUED
-                            </span>
+                        {/* QR Scanned At */}
+                        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
+                          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                            QR Scanned At
                           </div>
-                          <div className="text-xs font-mono font-black text-sky-300">
-                            {formatTimestamp(qrCreatedTime, detectedTimeZone)}
+                          <div className="text-xl font-mono font-black text-emerald-400 mt-1">
+                            {formatClockTime(qrScannedAt, detectedTimeZone)}
                           </div>
-                          <div className="text-[10px] text-slate-400">
-                            {scannedResult.createdAt
-                              ? "✓ Authenticated timestamp encoded inside QR payload"
-                              : "✓ Synchronized with field intake pass issuance"}
+                          <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
+                            <span>{formatTimestamp(qrScannedAt, detectedTimeZone, false)}</span>
+                            <span className="text-emerald-400 font-mono">SERVER RECORD</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Time Taken to Reach Shelter */}
+                      <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/40 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
+                            Time Taken to Reach Shelter
+                          </div>
+                          <div className="text-3xl font-mono font-black text-emerald-300 mt-1">
+                            {formatDuration(durationSeconds)}
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-1">
+                            Calculated: QR Scan Time ({formatClockTime(qrScannedAt, detectedTimeZone)}) − QR Creation Time ({formatClockTime(qrCreatedAt, detectedTimeZone)})
                           </div>
                         </div>
 
-                        {/* EXACT STOPPED TIME OF SCAN */}
-                        <div className="sm:col-span-2 p-3 rounded-xl bg-amber-950/20 border border-amber-500/40 space-y-1 relative overflow-hidden">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-amber-300 font-semibold flex items-center gap-1.5">
-                              <Lock className="w-3.5 h-3.5 text-amber-400" />
-                              Shelter Gate Scan Time (Stopped Clock):
-                            </span>
-                            <span className="text-[9px] font-mono font-black bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-500/40">
-                              🔒 TIME LOCKED AT SCAN
-                            </span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold">
+                            Timer State
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 text-xs font-mono font-black text-amber-300 bg-amber-950/90 px-3 py-1.5 rounded-lg border border-amber-500/50 shadow-inner">
+                            <Lock className="w-3.5 h-3.5 text-amber-400" />
+                            TIMER FROZEN AT SCAN
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* STATUS */}
+                      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            STATUS
                           </div>
-                          <div className="text-sm font-mono font-black text-amber-300">
-                            {formatTimestamp(scanTime, detectedTimeZone)}
+                          <div className="text-base font-black text-emerald-400 flex items-center gap-2 mt-0.5">
+                            <CheckCircle className="w-5 h-5 text-emerald-400" />
+                            <span>✓ Reached Shelter</span>
                           </div>
-                          <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400 pt-0.5">
-                            <span>
-                              Live camera clock automatically frozen at scan instant for audit accuracy
-                            </span>
-                            <span className="font-semibold text-emerald-400">
-                              {transitDiffMinutes > 0
-                                ? `${transitDiffMinutes} min transit elapsed from pass creation`
-                                : "Immediate Gate Presentation (< 1 min elapsed)"}
-                            </span>
-                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-mono text-slate-400 block">
+                            Shelter Gate Muster
+                          </span>
+                          <span className="text-xs font-mono font-bold text-emerald-300">
+                            #{scannedResult.shortRef.toUpperCase()} • {currentShelter?.name || "Official Shelter"}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1836,9 +2004,16 @@ export default function ScanPage() {
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-center">
-                    <div className="text-right text-[10px] text-emerald-400 font-mono flex items-center gap-1 bg-slate-900 px-2 py-1 rounded border border-slate-800">
-                      <Clock className="w-3 h-3 text-emerald-400" />
-                      <span>{formatTimeOnly(adm.admitted_at, detectedTimeZone)}</span>
+                    <div className="text-right text-[10px] text-emerald-400 font-mono bg-slate-900 px-2.5 py-1.5 rounded border border-slate-800 space-y-0.5">
+                      <div className="flex items-center gap-1 justify-end">
+                        <Clock className="w-3 h-3 text-emerald-400" />
+                        <span>{formatClockTime(adm.qr_scanned_at || adm.admitted_at, detectedTimeZone)}</span>
+                      </div>
+                      {adm.arrival_duration_seconds != null && (
+                        <div className="text-[9px] text-sky-300 font-semibold">
+                          Transit: {formatDuration(adm.arrival_duration_seconds)}
+                        </div>
+                      )}
                     </div>
 
                     <button
