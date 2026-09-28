@@ -23,7 +23,11 @@ import {
   Sparkles,
   Lock,
 } from "lucide-react";
-import { Html5Qrcode } from "html5-qrcode";
+import {
+  Html5Qrcode,
+  Html5QrcodeSupportedFormats,
+  Html5QrcodeScannerState,
+} from "html5-qrcode";
 import { decodeQRPayload, type QRPayloadData } from "@/lib/qr/codec";
 import {
   db,
@@ -200,6 +204,14 @@ export default function ScanPage() {
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Ultra-fast scanner & hardware detector state refs
+  const isProcessingScanRef = useRef<boolean>(false);
+  const isScanningActiveRef = useRef<boolean>(false);
+  const frameCallbackIdRef = useRef<number | null>(null);
+  const nativeDetectorRef = useRef<any>(null);
+  const lastProcessedCodeRef = useRef<string | null>(null);
+  const lastProcessedAtRef = useRef<number>(0);
+
   // Auto-Detect System Timezone and Restore Frozen Timer on Refresh
   useEffect(() => {
     try {
@@ -324,8 +336,141 @@ export default function ScanPage() {
     }
   };
 
+  // Stop Continuous Frame Scanning Loop
+  const stopContinuousScan = () => {
+    isScanningActiveRef.current = false;
+    if (frameCallbackIdRef.current !== null) {
+      const videoEl = document.querySelector<HTMLVideoElement>(
+        "#qr-camera-viewport video"
+      );
+      if (videoEl && "cancelVideoFrameCallback" in videoEl) {
+        try {
+          (videoEl as any).cancelVideoFrameCallback(frameCallbackIdRef.current);
+        } catch {}
+      } else {
+        cancelAnimationFrame(frameCallbackIdRef.current);
+      }
+      frameCallbackIdRef.current = null;
+    }
+  };
+
+  // Ultra-Fast Continuous Camera-Frame Processing (Hardware-Accelerated BarcodeDetector)
+  const startContinuousScan = () => {
+    stopContinuousScan();
+    isScanningActiveRef.current = true;
+
+    const videoEl = document.querySelector<HTMLVideoElement>(
+      "#qr-camera-viewport video"
+    );
+    if (!videoEl) return;
+
+    // Initialize native hardware BarcodeDetector if available in browser
+    if (
+      typeof window !== "undefined" &&
+      "BarcodeDetector" in window &&
+      !nativeDetectorRef.current
+    ) {
+      try {
+        nativeDetectorRef.current = new (window as any).BarcodeDetector({
+          formats: ["qr_code"],
+        });
+      } catch {
+        nativeDetectorRef.current = null;
+      }
+    }
+
+    const detector = nativeDetectorRef.current;
+    if (!detector) return; // Fallback to Html5Qrcode internal engine
+
+    let isScanningThisFrame = false;
+
+    const onFrame = async () => {
+      if (!isScanningActiveRef.current || isProcessingScanRef.current) return;
+
+      if (
+        !isScanningThisFrame &&
+        videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+        !videoEl.paused &&
+        !videoEl.ended
+      ) {
+        isScanningThisFrame = true;
+        try {
+          const barcodes = await detector.detect(videoEl);
+          if (barcodes && barcodes.length > 0) {
+            // Prioritize the barcode closest to the center scanning brackets
+            let chosen = barcodes[0];
+            if (barcodes.length > 1 && videoEl.videoWidth && videoEl.videoHeight) {
+              const centerX = videoEl.videoWidth / 2;
+              const centerY = videoEl.videoHeight / 2;
+              let minDistance = Infinity;
+              for (const b of barcodes) {
+                if (b.boundingBox) {
+                  const bx = b.boundingBox.x + b.boundingBox.width / 2;
+                  const by = b.boundingBox.y + b.boundingBox.height / 2;
+                  const dist = Math.hypot(bx - centerX, by - centerY);
+                  if (dist < minDistance) {
+                    minDistance = dist;
+                    chosen = b;
+                  }
+                }
+              }
+            }
+
+            const rawText = chosen?.rawValue?.trim();
+            if (rawText && !isProcessingScanRef.current) {
+              const now = Date.now();
+              if (
+                lastProcessedCodeRef.current === rawText &&
+                now - lastProcessedAtRef.current < 2500
+              ) {
+                // Ignore identical repeated scan within grace window
+              } else {
+                // STOP SCANNING IMMEDIATELY to prevent duplicate scans
+                isProcessingScanRef.current = true;
+                isScanningActiveRef.current = false;
+                lastProcessedCodeRef.current = rawText;
+                lastProcessedAtRef.current = now;
+
+                stopContinuousScan();
+                try {
+                  if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+                    html5QrCodeRef.current.pause(true);
+                  }
+                } catch {}
+
+                playScanBeep();
+                handleProcessCode(rawText);
+                return;
+              }
+            }
+          }
+        } catch {
+          // Frame dropped or busy
+        } finally {
+          isScanningThisFrame = false;
+        }
+      }
+
+      if (isScanningActiveRef.current && !isProcessingScanRef.current) {
+        if ("requestVideoFrameCallback" in videoEl) {
+          frameCallbackIdRef.current = (videoEl as any).requestVideoFrameCallback(onFrame);
+        } else {
+          frameCallbackIdRef.current = requestAnimationFrame(onFrame);
+        }
+      }
+    };
+
+    if ("requestVideoFrameCallback" in videoEl) {
+      frameCallbackIdRef.current = (videoEl as any).requestVideoFrameCallback(onFrame);
+    } else {
+      frameCallbackIdRef.current = requestAnimationFrame(onFrame);
+    }
+  };
+
   // Stop Camera Scanner
   const stopCamera = async () => {
+    stopContinuousScan();
+    isProcessingScanRef.current = false;
     if (html5QrCodeRef.current) {
       try {
         if (html5QrCodeRef.current.isScanning) {
@@ -370,19 +515,55 @@ export default function ScanPage() {
         setActiveCameraLabel(selected.label || "Integrated Camera");
       }
 
+      // Initialize Html5Qrcode with formats limited strictly to QR_CODE for maximum speed
       const qrScanner = new Html5Qrcode("qr-camera-viewport", {
         verbose: false,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true,
+        },
       });
       html5QrCodeRef.current = qrScanner;
 
+      // Optimal 720p/1080p frame configuration for ultra-low latency & 30-60fps smoothness
       const scanConfig = {
-        fps: 15,
+        fps: 30,
         aspectRatio: 1.0,
+        videoConstraints: {
+          facingMode: "environment",
+          width: { ideal: 1280, max: 1920, min: 640 },
+          height: { ideal: 720, max: 1080, min: 480 },
+          frameRate: { ideal: 60, min: 30 },
+        },
       };
 
       const onScanSuccess = (decodedText: string) => {
+        const text = decodedText?.trim();
+        if (!text || isProcessingScanRef.current) return;
+
+        const now = Date.now();
+        if (
+          lastProcessedCodeRef.current === text &&
+          now - lastProcessedAtRef.current < 2500
+        ) {
+          return;
+        }
+
+        // STOP SCANNING IMMEDIATELY to prevent duplicate scans
+        isProcessingScanRef.current = true;
+        isScanningActiveRef.current = false;
+        lastProcessedCodeRef.current = text;
+        lastProcessedAtRef.current = now;
+
+        stopContinuousScan();
+        try {
+          if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+            html5QrCodeRef.current.pause(true);
+          }
+        } catch {}
+
         playScanBeep();
-        handleProcessCode(decodedText);
+        handleProcessCode(text);
       };
 
       const onScanError = () => {
@@ -426,6 +607,8 @@ export default function ScanPage() {
 
       setIsCameraActive(true);
       setIsCameraLoading(false);
+      isScanningActiveRef.current = true;
+      isProcessingScanRef.current = false;
 
       // Force video sizing to fill viewport cleanly
       const videoEl = document.querySelector<HTMLVideoElement>(
@@ -441,6 +624,12 @@ export default function ScanPage() {
         if (videoEl.paused) {
           videoEl.play().catch(() => {});
         }
+
+        // Start ultra-fast continuous camera-frame processing immediately
+        startContinuousScan();
+        videoEl.addEventListener("playing", () => startContinuousScan(), {
+          once: true,
+        });
       }
 
       // Check flashlight/torch capability
@@ -514,6 +703,7 @@ export default function ScanPage() {
   // Clean up camera on unmount
   useEffect(() => {
     return () => {
+      stopContinuousScan();
       if (html5QrCodeRef.current) {
         try {
           if (html5QrCodeRef.current.isScanning) {
@@ -545,6 +735,7 @@ export default function ScanPage() {
       setMatchedTriage(null);
       setExistingAdmission(null);
       setScanAuditRecord(null);
+      isProcessingScanRef.current = false;
       return;
     }
 
@@ -674,7 +865,7 @@ export default function ScanPage() {
     }
   };
 
-  // Reset & Scan Next Evacuee (Resumes live clock)
+  // Reset & Scan Next Evacuee (Resumes live clock & ultra-fast scanner)
   const handleScanNext = () => {
     setScannedResult(null);
     setManualCode("");
@@ -689,8 +880,23 @@ export default function ScanPage() {
     } catch {}
     setIsClockRunning(true); // RESUME LIVE CLOCK!
 
+    // Reset duplicate & scanning locks for next pass
+    isProcessingScanRef.current = false;
+    lastProcessedCodeRef.current = null;
+    isScanningActiveRef.current = true;
+
     if (!isCameraActive) {
       startCamera();
+    } else {
+      if (
+        html5QrCodeRef.current &&
+        html5QrCodeRef.current.getState() === Html5QrcodeScannerState.PAUSED
+      ) {
+        try {
+          html5QrCodeRef.current.resume();
+        } catch {}
+      }
+      startContinuousScan();
     }
   };
 

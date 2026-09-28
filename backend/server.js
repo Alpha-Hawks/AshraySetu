@@ -60,11 +60,9 @@ try {
 }
 
 function saveQRScans() {
-  try {
-    fs.writeFileSync(qrScansPath, JSON.stringify(qrScans, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Failed to persist QR scans:", err);
-  }
+  fs.writeFile(qrScansPath, JSON.stringify(qrScans, null, 2), "utf-8", (err) => {
+    if (err) console.error("Failed to persist QR scans:", err);
+  });
 }
 
 // Master shelters database (Odisha + Andhra Pradesh)
