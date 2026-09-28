@@ -13,7 +13,6 @@ import {
   HeartPulse,
   RefreshCw,
   Flashlight,
-  Volume2,
   X,
   ChevronRight,
   Clock,
@@ -22,9 +21,9 @@ import {
   Undo2,
   AlertCircle,
   Sparkles,
-  Video,
+  Lock,
 } from "lucide-react";
-import { Html5Qrcode, type CameraDevice } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { decodeQRPayload, type QRPayloadData } from "@/lib/qr/codec";
 import {
   db,
@@ -37,53 +36,76 @@ import {
 import { translations, type Language } from "@/lib/locales/translations";
 
 /**
- * Format any timestamp or date into Indian Standard Time (IST)
- * TimeZone: Asia/Kolkata (UTC+05:30)
+ * Format any timestamp or date into the user's detected local time zone
  */
-function formatToIST(
+function formatTimestamp(
   dateVal: number | string | Date | undefined | null,
+  targetTimeZone = "Asia/Kolkata",
   includeSeconds = true
 ): string {
   if (!dateVal) return "N/A";
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return "Invalid Date";
-    return (
-      d.toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        ...(includeSeconds ? { second: "2-digit" } : {}),
-        hour12: true,
-      }) + " IST"
-    );
+
+    let tzShort = "";
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: targetTimeZone,
+        timeZoneName: "short",
+      }).formatToParts(d);
+      tzShort =
+        parts.find((p) => p.type === "timeZoneName")?.value || targetTimeZone;
+    } catch {}
+
+    const formatted = d.toLocaleString("en-IN", {
+      timeZone: targetTimeZone,
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      ...(includeSeconds ? { second: "2-digit" } : {}),
+      hour12: true,
+    });
+
+    return tzShort ? `${formatted} (${tzShort})` : formatted;
   } catch {
     return String(dateVal);
   }
 }
 
 /**
- * Format time only in Indian Standard Time (IST)
+ * Format time only in the user's detected local time zone
  */
-function formatToISTTimeOnly(
-  dateVal: number | string | Date | undefined | null
+function formatTimeOnly(
+  dateVal: number | string | Date | undefined | null,
+  targetTimeZone = "Asia/Kolkata"
 ): string {
   if (!dateVal) return "N/A";
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return "Invalid Time";
-    return (
-      d.toLocaleTimeString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      }) + " IST"
-    );
+
+    let tzShort = "";
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: targetTimeZone,
+        timeZoneName: "short",
+      }).formatToParts(d);
+      tzShort =
+        parts.find((p) => p.type === "timeZoneName")?.value || targetTimeZone;
+    } catch {}
+
+    const formatted = d.toLocaleTimeString("en-IN", {
+      timeZone: targetTimeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+
+    return tzShort ? `${formatted} (${tzShort})` : formatted;
   } catch {
     return String(dateVal);
   }
@@ -102,15 +124,19 @@ export default function ScanPage() {
   const [isAdmitted, setIsAdmitted] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"scanner" | "muster">("scanner");
 
-  // Real-time IST Clock State
-  const [currentISTClock, setCurrentISTClock] = useState<string>("");
+  // Auto-Detected Timezone State
+  const [detectedTimeZone, setDetectedTimeZone] = useState<string>("Asia/Kolkata");
+  const [timeZoneShort, setTimeZoneShort] = useState<string>("IST");
+
+  // Accurate Scan Time Lock Tracking (Clock stops when QR is scanned!)
+  const [isClockRunning, setIsClockRunning] = useState<boolean>(true);
+  const [currentClockDisplay, setCurrentClockDisplay] = useState<string>("");
+  const [scannedAtTimestamp, setScannedAtTimestamp] = useState<number | null>(null);
 
   // Camera State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [isCameraLoading, setIsCameraLoading] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [availableCameras, setAvailableCameras] = useState<CameraDevice[]>([]);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const [activeCameraLabel, setActiveCameraLabel] = useState<string>("");
   const [torchOn, setTorchOn] = useState<boolean>(false);
   const [hasTorch, setHasTorch] = useState<boolean>(false);
@@ -122,12 +148,34 @@ export default function ScanPage() {
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Synchronize Live Clock in Indian Standard Time (IST)
+  // Auto-Detect System Timezone on Mount
   useEffect(() => {
+    try {
+      const tz =
+        Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
+      setDetectedTimeZone(tz);
+
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        timeZoneName: "short",
+      }).formatToParts(new Date());
+      const shortCode =
+        parts.find((p) => p.type === "timeZoneName")?.value || tz;
+      setTimeZoneShort(shortCode);
+    } catch {
+      setDetectedTimeZone("Asia/Kolkata");
+      setTimeZoneShort("IST");
+    }
+  }, []);
+
+  // Synchronize Live Clock (Stops when QR pass is scanned!)
+  useEffect(() => {
+    if (!isClockRunning) return; // Do not run clock after scan - stop time for accurate scan details!
+
     const updateClock = () => {
       const now = new Date();
-      const istString = now.toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
+      const formatted = now.toLocaleString("en-IN", {
+        timeZone: detectedTimeZone,
         weekday: "short",
         day: "2-digit",
         month: "short",
@@ -137,13 +185,13 @@ export default function ScanPage() {
         second: "2-digit",
         hour12: true,
       });
-      setCurrentISTClock(`${istString} (IST • UTC+05:30)`);
+      setCurrentClockDisplay(`${formatted} (${timeZoneShort})`);
     };
 
     updateClock();
     const timer = setInterval(updateClock, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isClockRunning, detectedTimeZone, timeZoneShort]);
 
   // Load Initial Data
   const refreshData = async () => {
@@ -169,28 +217,8 @@ export default function ScanPage() {
     }
   };
 
-  // Discover Available Cameras
-  const detectCameras = async () => {
-    try {
-      const devices = await Html5Qrcode.getCameras();
-      if (devices && devices.length > 0) {
-        setAvailableCameras(devices);
-        if (!selectedCameraId) {
-          // If on mobile/tablet, prefer rear/environment camera
-          const rear = devices.find((d) =>
-            /back|rear|environment|world/i.test(d.label)
-          );
-          setSelectedCameraId(rear ? rear.id : devices[0].id);
-        }
-      }
-    } catch (e) {
-      console.warn("Could not pre-enumerate cameras", e);
-    }
-  };
-
   useEffect(() => {
     refreshData();
-    detectCameras();
 
     const handleLang = () => {
       const savedLang = localStorage.getItem("ashraysetu_lang") as Language;
@@ -251,40 +279,32 @@ export default function ScanPage() {
     setActiveCameraLabel("");
   };
 
-  // Start Camera with Cascading Fallback & Hardware Discovery
-  const startCamera = async (overrideCameraId?: string) => {
+  // Start Camera with Automatic Hardware Device Discovery & Cascading Fallback
+  const startCamera = async () => {
     setCameraError(null);
     setIsCameraLoading(true);
 
     try {
-      // Stop existing instance first
       await stopCamera();
 
-      // Check camera devices
-      let cameras = availableCameras;
-      if (!cameras || cameras.length === 0) {
-        try {
-          cameras = await Html5Qrcode.getCameras();
-          if (cameras) setAvailableCameras(cameras);
-        } catch {
-          // Permissions will be asked during start()
-        }
+      // Automatically discover and pick best camera behind the scenes
+      let cameras: any[] = [];
+      try {
+        cameras = await Html5Qrcode.getCameras();
+      } catch {
+        // Permissions will prompt
       }
 
-      // Determine camera target to run
-      const targetId = overrideCameraId || selectedCameraId;
-      let cameraConfig: string | { facingMode: string } = {
-        facingMode: "environment",
-      };
+      let cameraConfig: any = { facingMode: "environment" };
 
-      if (targetId && cameras && cameras.some((c) => c.id === targetId)) {
-        cameraConfig = targetId;
-        const matched = cameras.find((c) => c.id === targetId);
-        if (matched) setActiveCameraLabel(matched.label || "Connected Camera");
-      } else if (cameras && cameras.length > 0) {
-        cameraConfig = cameras[0].id;
-        setActiveCameraLabel(cameras[0].label || "Default Camera");
-        setSelectedCameraId(cameras[0].id);
+      if (cameras && cameras.length > 0) {
+        // Prioritize rear/environment camera on phones/tablets
+        const rear = cameras.find((c) =>
+          /back|rear|environment|world/i.test(c.label)
+        );
+        const selected = rear || cameras[0];
+        cameraConfig = selected.id;
+        setActiveCameraLabel(selected.label || "Integrated Camera");
       }
 
       const qrScanner = new Html5Qrcode("qr-camera-viewport", {
@@ -311,10 +331,10 @@ export default function ScanPage() {
       };
 
       const onScanError = () => {
-        // Standard frame parse error, silent ignore
+        // Silent ignore frame parse noise
       };
 
-      // Attempt 1: Start with selected target camera
+      // Automatic Cascading Attempt
       try {
         await qrScanner.start(
           cameraConfig,
@@ -322,10 +342,8 @@ export default function ScanPage() {
           onScanSuccess,
           onScanError
         );
-      } catch (firstErr: any) {
-        console.warn("First camera attempt failed, trying fallback...", firstErr);
-
-        // Attempt 2: Fallback to { facingMode: "user" } (Webcam)
+      } catch (firstErr) {
+        console.warn("Attempt 1 failed, trying webcam fallback...", firstErr);
         try {
           await qrScanner.start(
             { facingMode: "user" },
@@ -333,23 +351,22 @@ export default function ScanPage() {
             onScanSuccess,
             onScanError
           );
-          setActiveCameraLabel("User Front Camera / Webcam");
-        } catch (secondErr: any) {
-          // Attempt 3: Fallback to generic { facingMode: "environment" }
+          setActiveCameraLabel("Webcam / Front Camera");
+        } catch {
           await qrScanner.start(
             { facingMode: "environment" },
             scanConfig,
             onScanSuccess,
             onScanError
           );
-          setActiveCameraLabel("Environment Camera");
+          setActiveCameraLabel("Default Camera");
         }
       }
 
       setIsCameraActive(true);
       setIsCameraLoading(false);
 
-      // Verify and force video styling so it fills the viewport
+      // Force video sizing to fill viewport cleanly
       const videoEl = document.querySelector<HTMLVideoElement>(
         "#qr-camera-viewport video"
       );
@@ -381,7 +398,7 @@ export default function ScanPage() {
         err?.message?.toLowerCase().includes("permission")
       ) {
         setCameraError(
-          "Camera permission was denied. Please click the lock or camera icon in your browser address bar to allow camera access."
+          "Camera permission was denied. Please allow camera permissions in your browser address bar."
         );
       } else if (
         err?.name === "NotFoundError" ||
@@ -409,14 +426,6 @@ export default function ScanPage() {
       setTorchOn(nextState);
     } catch (err) {
       console.warn("Torch toggle error", err);
-    }
-  };
-
-  // Switch to a specific camera hardware
-  const handleSelectCamera = async (cameraId: string) => {
-    setSelectedCameraId(cameraId);
-    if (isCameraActive) {
-      await startCamera(cameraId);
     }
   };
 
@@ -454,8 +463,27 @@ export default function ScanPage() {
     };
   }, []);
 
-  // Process & Retrieve Household Intake Details
+  // Process & Retrieve Household Intake Details + STOP TIME FOR ACCURATE RECORD
   const handleProcessCode = async (codeText: string) => {
+    // 1. FREEZE AND STOP TIME AT THE EXACT SECOND OF SCAN!
+    const scanMoment = Date.now();
+    setScannedAtTimestamp(scanMoment);
+    setIsClockRunning(false); // STOP THE CLOCK: accurately lock scan time!
+
+    // Freeze display clock at this exact second
+    const frozenString = new Date(scanMoment).toLocaleString("en-IN", {
+      timeZone: detectedTimeZone,
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+    setCurrentClockDisplay(`${frozenString} (${timeZoneShort})`);
+
     setErrorMessage(null);
     setIsAdmitted(false);
     const decoded = decodeQRPayload(codeText.trim());
@@ -518,26 +546,40 @@ export default function ScanPage() {
     }
   };
 
+  // Reset & Scan Next Evacuee (Resumes live clock)
+  const handleScanNext = () => {
+    setScannedResult(null);
+    setManualCode("");
+    setMatchedHousehold(null);
+    setMatchedTriage(null);
+    setExistingAdmission(null);
+    setIsAdmitted(false);
+    setScannedAtTimestamp(null);
+    setIsClockRunning(true); // RESUME LIVE CLOCK!
+
+    if (!isCameraActive) {
+      startCamera();
+    }
+  };
+
   // Confirm Admission & Increment Shelter Headcount
   const handleConfirmAdmission = async () => {
     if (!scannedResult || !currentShelter) return;
 
     try {
-      // 1. Increment Shelter Occupancy in IndexedDB
       const newOccupancy =
         currentShelter.current_occupancy + scannedResult.totalMembers;
       await db.shelters.update(selectedShelterId, {
         current_occupancy: newOccupancy,
       });
 
-      // 2. Derive triage category
       let triageCategory = "P3_STANDARD";
       if (scannedResult.triageCode.startsWith("P1"))
         triageCategory = "P1_CRITICAL";
       else if (scannedResult.triageCode.startsWith("P2"))
         triageCategory = "P2_URGENT";
 
-      // 3. Create permanent admission muster record with current IST timestamp
+      const admissionTime = scannedAtTimestamp || Date.now();
       const admissionRecord: ShelterAdmission = {
         id: crypto.randomUUID(),
         shelter_id: selectedShelterId,
@@ -553,7 +595,7 @@ export default function ScanPage() {
         livestock_count: scannedResult.livestockCount,
         triage_code: scannedResult.triageCode,
         triage_level: matchedTriage?.triage_level || triageCategory,
-        admitted_at: Date.now(),
+        admitted_at: admissionTime,
         clinical_notes:
           matchedTriage?.notes ||
           (scannedResult.triageCode.includes("PREG")
@@ -569,7 +611,6 @@ export default function ScanPage() {
 
       await db.admissions.add(admissionRecord);
 
-      // Refresh shelter & admissions state
       await refreshData();
       await loadAdmissions(selectedShelterId);
 
@@ -582,7 +623,7 @@ export default function ScanPage() {
     }
   };
 
-  // Revert / Undo Admission (decrements headcount if admitted accidentally)
+  // Revert / Undo Admission
   const handleUndoAdmission = async (admissionId: string) => {
     if (
       !confirm(
@@ -647,7 +688,6 @@ export default function ScanPage() {
   );
   const remainingSpots = Math.max(0, currentCapacity - currentOccupancy);
 
-  // Filtered muster list
   const filteredAdmissions = admissions.filter(
     (a) =>
       a.head_name.toLowerCase().includes(searchMuster.toLowerCase()) ||
@@ -655,7 +695,6 @@ export default function ScanPage() {
       a.household_token.toLowerCase().includes(searchMuster.toLowerCase())
   );
 
-  // Sample Passes for Instant Verification Testing
   const samplePass1 =
     "V1|OD-KEN-RAJ-001|c4b1|5|2|2|1|0|2|P1_PREG|Pravat Kumar Nayak|Talachua";
   const samplePass2 =
@@ -670,7 +709,7 @@ export default function ScanPage() {
       {/* Hidden File Sink for Image QR Decoding */}
       <div id="qr-hidden-file-sink" className="hidden" />
 
-      {/* TOP BANNER: SHELTER SELECTION, IST CLOCK & CAPACITY */}
+      {/* TOP BANNER: SHELTER SELECTION, TIMEZONE CLOCK & CAPACITY */}
       <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl space-y-4">
         {/* Header & Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -718,20 +757,43 @@ export default function ScanPage() {
           </div>
         </div>
 
-        {/* Live Indian Standard Time (IST) Clock Bar */}
-        <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+        {/* Dynamic System Timezone & Accurate Scan Time Lock Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
           <div className="flex items-center gap-2 text-slate-300">
-            <Clock className="w-4 h-4 text-emerald-400" />
+            {isClockRunning ? (
+              <Clock className="w-4 h-4 text-emerald-400 animate-pulse shrink-0" />
+            ) : (
+              <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+            )}
             <span className="font-semibold text-slate-400">
-              Indian Standard Time (IST):
+              {isClockRunning
+                ? "Live Device Time:"
+                : "Scan Time (Locked & Stopped):"}
             </span>
-            <span className="font-mono font-bold text-emerald-300">
-              {currentISTClock || "Synchronizing IST..."}
+            <span
+              className={`font-mono font-bold ${
+                isClockRunning ? "text-emerald-300" : "text-amber-300"
+              }`}
+            >
+              {currentClockDisplay || "Detecting time..."}
             </span>
           </div>
-          <span className="text-[10px] font-mono bg-slate-900 px-2 py-0.5 rounded text-sky-400 border border-slate-800">
-            TIMEZONE: ASIA/KOLKATA
-          </span>
+
+          <div className="flex items-center gap-1.5">
+            {isClockRunning ? (
+              <span className="flex items-center gap-1 text-[10px] font-mono bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded text-emerald-300 font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                LIVE CLOCK
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-[10px] font-mono bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 rounded text-amber-300 font-bold">
+                🔒 TIME STOPPED AT SCAN
+              </span>
+            )}
+            <span className="text-[10px] font-mono bg-slate-900 px-2 py-0.5 rounded text-sky-400 border border-slate-800 uppercase">
+              {detectedTimeZone}
+            </span>
+          </div>
         </div>
 
         {/* Operating Shelter Selector */}
@@ -760,7 +822,7 @@ export default function ScanPage() {
           </select>
         </div>
 
-        {/* Real-time Shelter Capacity & Admission Calculator Bar */}
+        {/* Real-time Shelter Capacity Bar */}
         {currentShelter && (
           <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2.5">
             <div className="flex items-center justify-between text-xs">
@@ -869,25 +931,6 @@ export default function ScanPage() {
               )}
             </div>
 
-            {/* Hardware Camera Selector (if multiple cameras detected) */}
-            {availableCameras.length > 1 && (
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-                <Video className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                <span className="text-slate-400 text-[11px] shrink-0">Device:</span>
-                <select
-                  value={selectedCameraId}
-                  onChange={(e) => handleSelectCamera(e.target.value)}
-                  className="bg-transparent text-slate-200 text-xs focus:outline-none w-full"
-                >
-                  {availableCameras.map((cam, idx) => (
-                    <option key={cam.id} value={cam.id} className="bg-slate-900">
-                      {cam.label || `Camera ${idx + 1}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             {/* FIXED CAMERA MOUNT VIEWPORT */}
             <div className="relative w-full max-w-sm mx-auto aspect-square rounded-2xl bg-slate-950 border-2 border-slate-800 overflow-hidden shadow-2xl">
               {/* Permanent Mount Element: Always rendered with fixed dimensions */}
@@ -929,13 +972,13 @@ export default function ScanPage() {
                       Camera Scanner Ready
                     </h3>
                     <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-                      Click below to activate device webcam or rear camera to scan evacuee QR passes.
+                      Click below to activate camera and scan evacuee QR passes in real-time.
                     </p>
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2 w-full">
                     <button
-                      onClick={() => startCamera(selectedCameraId)}
+                      onClick={startCamera}
                       disabled={isCameraLoading}
                       className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2"
                     >
@@ -982,24 +1025,6 @@ export default function ScanPage() {
                   <span>Pause Camera</span>
                 </button>
 
-                {availableCameras.length > 1 && (
-                  <button
-                    onClick={() => {
-                      const nextIdx =
-                        (availableCameras.findIndex(
-                          (c) => c.id === selectedCameraId
-                        ) +
-                          1) %
-                        availableCameras.length;
-                      handleSelectCamera(availableCameras[nextIdx].id);
-                    }}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-2"
-                  >
-                    <RefreshCw className="w-4 h-4 text-emerald-400" />
-                    <span>Switch Camera Device</span>
-                  </button>
-                )}
-
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs transition border border-slate-700 flex items-center gap-1.5"
@@ -1021,7 +1046,7 @@ export default function ScanPage() {
                   </div>
                   <div className="pt-1">
                     <button
-                      onClick={() => startCamera()}
+                      onClick={startCamera}
                       className="text-[11px] underline font-bold hover:text-white"
                     >
                       Retry Camera Activation
@@ -1207,7 +1232,7 @@ export default function ScanPage() {
                 </div>
               )}
 
-              {/* SECTION 1: HOUSEHOLD IDENTITY & RESIDENTIAL ORIGIN */}
+              {/* SECTION 1: HOUSEHOLD IDENTITY, ORIGIN & STOPPED SCAN TIME */}
               <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-3">
                 <div className="text-[11px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-sky-400" />
@@ -1245,13 +1270,33 @@ export default function ScanPage() {
 
                   <div>
                     <span className="text-slate-400 block text-[11px]">
-                      Intake Registration Record (IST):
+                      Intake Registration Record:
                     </span>
                     <span className="text-emerald-400 font-bold font-mono text-xs">
-                      {formatToIST(
+                      {formatTimestamp(
                         matchedHousehold?.registered_at ||
-                          Date.now() - 25 * 60 * 1000
+                          Date.now() - 25 * 60 * 1000,
+                        detectedTimeZone
                       )}
+                    </span>
+                  </div>
+
+                  {/* EXACT STOPPED TIME OF SCAN */}
+                  <div className="sm:col-span-2 p-2.5 rounded-lg bg-slate-900/90 border border-amber-500/30 flex items-center justify-between">
+                    <div>
+                      <span className="text-[11px] text-amber-300/90 font-medium flex items-center gap-1">
+                        <Lock className="w-3 h-3 text-amber-400" />
+                        Accurate Pass Scan Time (Stopped):
+                      </span>
+                      <div className="text-xs font-mono font-black text-amber-300 mt-0.5">
+                        {formatTimestamp(
+                          scannedAtTimestamp || Date.now(),
+                          detectedTimeZone
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono bg-amber-950 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30 font-bold">
+                      TIME LOCKED
                     </span>
                   </div>
                 </div>
@@ -1534,8 +1579,14 @@ export default function ScanPage() {
                       Gate entry timestamp recorded at{" "}
                       <strong className="text-white">
                         {existingAdmission
-                          ? formatToISTTimeOnly(existingAdmission.admitted_at)
-                          : formatToISTTimeOnly(Date.now())}
+                          ? formatTimeOnly(
+                              existingAdmission.admitted_at,
+                              detectedTimeZone
+                            )
+                          : formatTimeOnly(
+                              scannedAtTimestamp || Date.now(),
+                              detectedTimeZone
+                            )}
                       </strong>
                       .
                     </p>
@@ -1544,21 +1595,11 @@ export default function ScanPage() {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
-                      setScannedResult(null);
-                      setManualCode("");
-                      setMatchedHousehold(null);
-                      setMatchedTriage(null);
-                      setExistingAdmission(null);
-                      setIsAdmitted(false);
-                      if (!isCameraActive) {
-                        startCamera(selectedCameraId);
-                      }
-                    }}
+                    onClick={handleScanNext}
                     className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition border border-slate-700 flex items-center justify-center gap-2"
                   >
                     <RefreshCw className="w-4 h-4 text-emerald-400" />
-                    <span>Scan Next Evacuee Pass</span>
+                    <span>Scan Next Evacuee Pass (Resume Clock)</span>
                   </button>
 
                   <button
@@ -1726,7 +1767,7 @@ export default function ScanPage() {
                   <div className="flex items-center gap-2 self-end sm:self-center">
                     <div className="text-right text-[10px] text-emerald-400 font-mono flex items-center gap-1 bg-slate-900 px-2 py-1 rounded border border-slate-800">
                       <Clock className="w-3 h-3 text-emerald-400" />
-                      <span>{formatToISTTimeOnly(adm.admitted_at)}</span>
+                      <span>{formatTimeOnly(adm.admitted_at, detectedTimeZone)}</span>
                     </div>
 
                     <button
