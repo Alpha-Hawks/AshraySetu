@@ -5,54 +5,161 @@
    ========================================================================== */
 
 :root {
+  /* ========================================================================
+     APPLE HUMAN INTERFACE GUIDELINES (HIG) SEMANTIC COLOR SYSTEM
+     Dark Appearance (Default / High-Contrast Coastal Telemetry)
+     ======================================================================== */
+  
+  /* System Background Hierarchy */
   --bg-primary: #050811;
   --bg-secondary: #0a1122;
-  --bg-card: rgba(13, 22, 41, 0.78);
-  --bg-card-hover: rgba(20, 32, 60, 0.88);
-  --bg-card-elevated: rgba(18, 30, 56, 0.95);
-  
+  --bg-card: rgba(13, 22, 41, 0.82);
+  --bg-card-hover: rgba(20, 32, 60, 0.92);
+  --bg-card-elevated: rgba(18, 30, 56, 0.96);
+  --bg-radial-glow: #0c1a38;
+  --bg-nav: rgba(5, 8, 17, 0.85);
+  --bg-chip: rgba(30, 41, 59, 0.55);
+  --bg-input: rgba(10, 16, 32, 0.9);
+  --bg-terminal: rgba(3, 7, 18, 0.95);
+  --bg-footer: #020409;
+  --grid-line: rgba(56, 189, 248, 0.035);
+
+  /* Apple Semantic Labels (Hierarchical Text) */
+  --text-main: #f8fafc;        /* Apple Label (Primary) */
+  --text-muted: #94a3b8;       /* Apple Secondary Label */
+  --text-dim: #64748b;         /* Apple Tertiary Label */
+  --text-quaternary: #475569;  /* Apple Quaternary Label */
+
+  /* Hairline Borders & Separators */
   --border-subtle: rgba(56, 189, 248, 0.12);
-  --border-active: rgba(56, 189, 248, 0.4);
+  --border-active: rgba(56, 189, 248, 0.45);
+  --border-input: rgba(56, 189, 248, 0.22);
   --border-danger: rgba(244, 63, 94, 0.35);
   --border-warning: rgba(245, 158, 11, 0.35);
   --border-success: rgba(16, 185, 129, 0.35);
+  --separator-subtle: rgba(255, 255, 255, 0.07);
 
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
-  
+  /* System Interactive Tint (Apple System Blue / Oceanic Cyan) */
   --cyan-primary: #06b6d4;
   --cyan-bright: #38bdf8;
   --cyan-glow: rgba(56, 189, 248, 0.25);
-  
+  --tint-bg: rgba(56, 189, 248, 0.12);
+  --tint-border: rgba(56, 189, 248, 0.35);
+
+  /* System Semantic Status: Warning / Alert (Apple System Yellow / Orange) */
   --amber-alert: #f59e0b;
   --amber-bright: #fbbf24;
   --amber-glow: rgba(245, 158, 11, 0.25);
-  
+  --amber-bg: rgba(245, 158, 11, 0.15);
+  --amber-border: rgba(245, 158, 11, 0.4);
+
+  /* System Semantic Status: Safe / Nominal (Apple System Green) */
   --emerald-safe: #10b981;
   --emerald-bright: #34d399;
   --emerald-glow: rgba(16, 185, 129, 0.25);
-  
+  --emerald-bg: rgba(16, 185, 129, 0.15);
+  --emerald-border: rgba(16, 185, 129, 0.4);
+
+  /* System Semantic Status: Critical / Destructive (Apple System Red) */
   --crimson-critical: #f43f5e;
   --crimson-bright: #fb7185;
   --crimson-glow: rgba(244, 63, 94, 0.3);
+  --crimson-bg: rgba(244, 63, 94, 0.18);
+  --crimson-border: rgba(244, 63, 94, 0.5);
 
+  /* Auxiliary System Accents */
   --purple-accent: #8b5cf6;
+  --purple-bg: rgba(139, 92, 246, 0.15);
   --blue-marine: #1e40af;
 
+  /* Typography */
   --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-  --radius-sm: 6px;
+  /* Shapes & Radii */
+  --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
   --radius-xl: 24px;
   --radius-full: 9999px;
 
-  --shadow-panel: 0 16px 36px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-subtle);
+  /* Elevation Shadows & Vibrancy */
+  --shadow-panel: 0 16px 36px -8px rgba(0, 0, 0, 0.65), 0 0 0 1px var(--border-subtle);
   --shadow-glow: 0 0 25px var(--cyan-glow);
   --shadow-alert: 0 0 30px var(--crimson-glow);
+}
+
+/* ========================================================================
+   APPLE HUMAN INTERFACE GUIDELINES (HIG)
+   Light Appearance: High Clarity, Frosted Vibrancy, Crisp Contrast
+   ======================================================================== */
+[data-theme="light"] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-card: rgba(255, 255, 255, 0.94);
+  --bg-card-hover: rgba(255, 255, 255, 1);
+  --bg-card-elevated: #ffffff;
+  --bg-radial-glow: #e0f2fe;
+  --bg-nav: rgba(255, 255, 255, 0.88);
+  --bg-chip: rgba(241, 245, 249, 0.95);
+  --bg-input: #ffffff;
+  --bg-terminal: #0f172a;
+  --bg-footer: #0a0f1d;
+  --grid-line: rgba(2, 132, 199, 0.045);
+
+  /* Apple Semantic Labels (WCAG AAA contrast against light) */
+  --text-main: #0f172a;        /* Primary Label: Crisp Deep Slate */
+  --text-muted: #475569;       /* Secondary Label: Slate 600 */
+  --text-dim: #64748b;         /* Tertiary Label: Slate 500 */
+  --text-quaternary: #94a3b8;  /* Quaternary Label: Slate 400 */
+
+  /* Hairline Borders & Separators */
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-active: rgba(2, 132, 199, 0.5);
+  --border-input: rgba(15, 23, 42, 0.16);
+  --border-danger: rgba(220, 38, 38, 0.35);
+  --border-warning: rgba(217, 119, 6, 0.35);
+  --border-success: rgba(5, 150, 105, 0.35);
+  --separator-subtle: rgba(15, 23, 42, 0.08);
+
+  /* System Interactive Tint: High-Contrast Coastal Blue */
+  --cyan-primary: #0284c7;
+  --cyan-bright: #0284c7;
+  --cyan-glow: rgba(2, 132, 199, 0.2);
+  --tint-bg: rgba(2, 132, 199, 0.08);
+  --tint-border: rgba(2, 132, 199, 0.3);
+
+  /* System Warning / Alert (WCAG AA compliant dark amber text) */
+  --amber-alert: #d97706;
+  --amber-bright: #b45309;
+  --amber-glow: rgba(217, 119, 6, 0.2);
+  --amber-bg: rgba(245, 158, 11, 0.12);
+  --amber-border: rgba(217, 119, 6, 0.35);
+
+  /* System Safe / Nominal (WCAG AA compliant dark emerald text) */
+  --emerald-safe: #059669;
+  --emerald-bright: #047857;
+  --emerald-glow: rgba(5, 150, 105, 0.2);
+  --emerald-bg: rgba(16, 185, 129, 0.12);
+  --emerald-border: rgba(5, 150, 105, 0.35);
+
+  /* System Critical / Destructive (WCAG AA compliant dark crimson text) */
+  --crimson-critical: #dc2626;
+  --crimson-bright: #b91c1c;
+  --crimson-glow: rgba(220, 38, 38, 0.25);
+  --crimson-bg: rgba(239, 68, 68, 0.12);
+  --crimson-border: rgba(220, 38, 38, 0.35);
+
+  /* Auxiliary System Accents */
+  --purple-accent: #6d28d9;
+  --purple-bg: rgba(109, 40, 217, 0.08);
+  --blue-marine: #1d4ed8;
+
+  /* Crisp Apple Shadow System */
+  --shadow-panel: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 2px 8px -2px rgba(15, 23, 42, 0.04), 0 0 0 1px var(--border-subtle);
+  --shadow-glow: 0 0 20px rgba(2, 132, 199, 0.15);
+  --shadow-alert: 0 0 20px rgba(220, 38, 38, 0.18);
 }
 
 /* Base Reset & Core Setup */
@@ -76,7 +183,8 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background: radial-gradient(circle at 50% 0%, #0c1a38 0%, var(--bg-primary) 70%);
+  background: radial-gradient(circle at 50% 0%, var(--bg-radial-glow) 0%, var(--bg-primary) 70%);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Subtle background telemetry grid & ambient flares */
@@ -88,11 +196,12 @@ body::before {
   width: 100vw;
   height: 100vh;
   background-image: 
-    linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 40px 40px;
   pointer-events: none;
   z-index: 0;
+  transition: opacity 0.3s ease;
 }
 
 /* Global Container */
@@ -109,9 +218,9 @@ body::before {
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  background: rgba(5, 8, 17, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: var(--bg-nav);
   border-bottom: 1px solid var(--border-subtle);
   transition: all 0.3s ease;
 }
@@ -153,7 +262,7 @@ body::before {
   font-size: 1.4rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #ffffff;
+  color: var(--text-main);
   display: flex;
   flex-direction: column;
   line-height: 1.1;
@@ -192,6 +301,64 @@ body::before {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+/* Apple HIG Appearance Switcher (Light / Dark Appearance) */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.42rem 0.85rem;
+  background: var(--bg-chip);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--tint-bg);
+  border-color: var(--border-active);
+  color: var(--cyan-bright);
+}
+
+.theme-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-theme="dark"] .icon-moon,
+:root:not([data-theme="light"]) .icon-moon {
+  display: none;
+}
+
+[data-theme="dark"] .icon-sun,
+:root:not([data-theme="light"]) .icon-sun {
+  display: inline-flex;
+  color: #fbbf24;
+}
+
+[data-theme="light"] .icon-sun {
+  display: none;
+}
+
+[data-theme="light"] .icon-moon {
+  display: inline-flex;
+  color: #0284c7;
+}
+
+.theme-label {
+  font-size: 0.76rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .status-beacon {
@@ -259,9 +426,9 @@ body::before {
 }
 
 .btn-secondary:hover {
-  background: rgba(51, 65, 85, 0.8);
+  background: var(--tint-bg);
   border-color: var(--cyan-bright);
-  color: #ffffff;
+  color: var(--cyan-bright);
 }
 
 .btn-danger {
@@ -322,7 +489,7 @@ body::before {
   line-height: 1.08;
   letter-spacing: -0.03em;
   margin-bottom: 1.4rem;
-  color: #ffffff;
+  color: var(--text-main);
 }
 
 .hero-title-gradient {
@@ -364,7 +531,7 @@ body::before {
   display: flex;
   flex-direction: column;
   padding: 0.5rem 0.75rem;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid var(--separator-subtle);
 }
 
 .telemetry-item:last-child {
@@ -387,7 +554,7 @@ body::before {
   font-family: var(--font-display);
   font-size: 1.75rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-main);
   line-height: 1.2;
 }
 
@@ -424,7 +591,7 @@ body::before {
   font-size: 2.3rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #ffffff;
+  color: var(--text-main);
   margin-bottom: 0.85rem;
 }
 
@@ -458,7 +625,7 @@ body::before {
   justify-content: space-between;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--separator-subtle);
 }
 
 .card-title-group {
@@ -471,7 +638,7 @@ body::before {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  background: rgba(56, 189, 248, 0.12);
+  background: var(--tint-bg);
   color: var(--cyan-bright);
   display: flex;
   align-items: center;
@@ -482,7 +649,7 @@ body::before {
   font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-main);
 }
 
 .canvas-wrapper {
@@ -552,7 +719,7 @@ body::before {
 }
 
 .shelter-summary-box {
-  background: rgba(15, 23, 42, 0.9);
+  background: var(--bg-chip);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 1.25rem;
@@ -573,7 +740,7 @@ body::before {
   font-family: var(--font-display);
   font-size: 1.35rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-main);
   margin-bottom: 0.25rem;
 }
 
@@ -591,10 +758,10 @@ body::before {
 }
 
 .spec-cell {
-  background: rgba(30, 41, 59, 0.5);
+  background: var(--bg-card);
   padding: 0.6rem 0.75rem;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
 }
 
 .spec-cell .lbl {
@@ -608,7 +775,7 @@ body::before {
   font-size: 1.1rem;
   font-weight: 700;
   font-family: var(--font-display);
-  color: #ffffff;
+  color: var(--text-main);
 }
 
 .occupancy-meter-wrap {
@@ -657,8 +824,8 @@ body::before {
   align-items: center;
   justify-content: space-between;
   padding: 0.65rem 0.85rem;
-  background: rgba(18, 28, 50, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--bg-chip);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-main);
   cursor: pointer;
@@ -667,7 +834,7 @@ body::before {
 }
 
 .shelter-btn-item:hover, .shelter-btn-item.active {
-  background: rgba(56, 189, 248, 0.12);
+  background: var(--tint-bg);
   border-color: var(--cyan-bright);
 }
 
@@ -681,7 +848,8 @@ body::before {
   font-family: var(--font-mono);
   padding: 0.15rem 0.45rem;
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--tint-bg);
+  color: var(--cyan-bright);
 }
 
 /* Inventory & Sphere Standards Burn Rate Calculator */
@@ -740,7 +908,7 @@ input[type="range"] {
 }
 
 .burn-status-card {
-  background: rgba(10, 17, 34, 0.85);
+  background: var(--bg-chip);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 1.5rem;
@@ -753,7 +921,7 @@ input[type="range"] {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.4rem 0.9rem;
+  padding: 0.45rem 0.95rem;
   border-radius: var(--radius-full);
   font-size: 0.78rem;
   font-family: var(--font-mono);
@@ -761,25 +929,26 @@ input[type="range"] {
   text-transform: uppercase;
   margin-bottom: 1.25rem;
   align-self: flex-start;
+  transition: all 0.3s ease;
 }
 
 .burn-status-pill.safe {
-  background: rgba(16, 185, 129, 0.15);
+  background: var(--emerald-bg);
   color: var(--emerald-bright);
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  border: 1px solid var(--emerald-border);
 }
 
 .burn-status-pill.warning {
-  background: rgba(245, 158, 11, 0.15);
+  background: var(--amber-bg);
   color: var(--amber-bright);
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  border: 1px solid var(--amber-border);
 }
 
 .burn-status-pill.critical {
-  background: rgba(244, 63, 94, 0.18);
+  background: var(--crimson-bg);
   color: var(--crimson-bright);
-  border: 1px solid rgba(244, 63, 94, 0.5);
-  box-shadow: 0 0 15px rgba(244, 63, 94, 0.3);
+  border: 1px solid var(--crimson-border);
+  box-shadow: 0 0 15px var(--crimson-glow);
   animation: pulse-danger 1.5s infinite;
 }
 
@@ -797,10 +966,11 @@ input[type="range"] {
 }
 
 .burn-metric-box {
-  background: rgba(18, 28, 52, 0.7);
+  background: var(--bg-card);
   padding: 1rem;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.25s ease;
 }
 
 .burn-metric-box .label {
@@ -814,9 +984,10 @@ input[type="range"] {
   font-family: var(--font-display);
   font-size: 2.2rem;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--text-main);
   line-height: 1.1;
   margin: 0.2rem 0;
+  transition: color 0.3s ease;
 }
 
 .burn-metric-box .unit {
@@ -866,19 +1037,19 @@ input[type="range"] {
 .input-box, .select-box {
   width: 100%;
   padding: 0.7rem 0.9rem;
-  background: rgba(10, 16, 32, 0.9);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
   border-radius: var(--radius-sm);
-  color: #ffffff;
+  color: var(--text-main);
   font-family: var(--font-body);
   font-size: 0.9rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .input-box:focus, .select-box:focus {
   outline: none;
   border-color: var(--cyan-bright);
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 0 3px var(--tint-bg);
 }
 
 .qr-token-card {
@@ -924,8 +1095,8 @@ input[type="range"] {
 
 .gatekeeper-log-box {
   width: 100%;
-  background: rgba(3, 7, 18, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-terminal);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 0.75rem;
   font-family: var(--font-mono);
@@ -962,8 +1133,8 @@ input[type="range"] {
 
 .filter-tab {
   padding: 0.45rem 1rem;
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-chip);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   font-size: 0.82rem;
   font-weight: 600;
@@ -973,9 +1144,9 @@ input[type="range"] {
 }
 
 .filter-tab:hover, .filter-tab.active {
-  background: rgba(56, 189, 248, 0.18);
+  background: var(--tint-bg);
   border-color: var(--cyan-bright);
-  color: #ffffff;
+  color: var(--cyan-bright);
 }
 
 .search-input-wrap {
@@ -986,12 +1157,18 @@ input[type="range"] {
 .search-input {
   width: 100%;
   padding: 0.5rem 1rem 0.5rem 2.2rem;
-  background: rgba(10, 17, 34, 0.9);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
   border-radius: var(--radius-full);
-  color: #ffffff;
+  color: var(--text-main);
   font-size: 0.85rem;
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+  border-color: var(--cyan-bright);
+  box-shadow: 0 0 0 3px var(--tint-bg);
 }
 
 .search-icon-pos {
@@ -1039,7 +1216,7 @@ input[type="range"] {
   font-family: var(--font-display);
   font-size: 1.25rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-main);
 }
 
 .state-badge {
@@ -1052,15 +1229,15 @@ input[type="range"] {
 }
 
 .state-badge.odisha {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: var(--amber-bg);
+  color: var(--amber-bright);
+  border: 1px solid var(--amber-border);
 }
 
 .state-badge.ap {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: var(--tint-bg);
+  color: var(--cyan-bright);
+  border: 1px solid var(--tint-border);
 }
 
 .risk-badge {
@@ -1074,15 +1251,15 @@ input[type="range"] {
 }
 
 .risk-badge.very-high {
-  background: rgba(244, 63, 94, 0.15);
+  background: var(--crimson-bg);
   color: var(--crimson-bright);
-  border: 1px solid rgba(244, 63, 94, 0.4);
+  border: 1px solid var(--crimson-border);
 }
 
 .risk-badge.high {
-  background: rgba(245, 158, 11, 0.15);
+  background: var(--amber-bg);
   color: var(--amber-bright);
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  border: 1px solid var(--amber-border);
 }
 
 .district-stats-row {
@@ -1091,8 +1268,8 @@ input[type="range"] {
   gap: 0.5rem;
   margin-bottom: 0.85rem;
   padding: 0.5rem 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--separator-subtle);
+  border-bottom: 1px solid var(--separator-subtle);
 }
 
 .district-stat {
@@ -1109,7 +1286,7 @@ input[type="range"] {
 .district-stat .v {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-main);
 }
 
 .district-cyclones {
@@ -1124,8 +1301,8 @@ input[type="range"] {
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  background: rgba(6, 12, 24, 0.9);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: var(--bg-chip);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 0.75rem;
@@ -1141,7 +1318,7 @@ input[type="range"] {
 }
 
 .copy-phone-btn:hover {
-  color: #ffffff;
+  color: var(--cyan-bright);
 }
 
 /* Architecture & Module Breakdown Showcase */
@@ -1202,7 +1379,7 @@ input[type="range"] {
   font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-main);
   margin-bottom: 0.5rem;
 }
 
@@ -1228,7 +1405,7 @@ input[type="range"] {
 .dispatch-content h3 {
   font-family: var(--font-display);
   font-size: 1.7rem;
-  color: #ffffff;
+  color: var(--text-main);
   margin-bottom: 0.6rem;
 }
 
@@ -1296,7 +1473,7 @@ input[type="range"] {
 .step-card h4 {
   font-family: var(--font-display);
   font-size: 1.05rem;
-  color: #ffffff;
+  color: var(--text-main);
   margin-bottom: 0.4rem;
 }
 
@@ -1308,8 +1485,8 @@ input[type="range"] {
 
 /* Footer */
 .site-footer {
-  background: #020409;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--bg-footer);
+  border-top: 1px solid var(--separator-subtle);
   padding: 3.5rem 0 2rem;
   margin-top: 5rem;
 }
@@ -1373,15 +1550,154 @@ input[type="range"] {
   color: var(--text-dim);
 }
 
+/* ============================================================
+   WIDGET UPDATE ANIMATIONS
+   Applied dynamically via JS whenever a widget value changes
+   ============================================================ */
+
+/* --- Keyframes --- */
+
+/* Number counter pop: scale + glow burst when a metric changes */
+@keyframes metricPop {
+  0%   { transform: scale(1);    filter: brightness(1);    }
+  25%  { transform: scale(1.18); filter: brightness(1.55); }
+  60%  { transform: scale(0.96); filter: brightness(1.1);  }
+  100% { transform: scale(1);    filter: brightness(1);    }
+}
+
+/* Slide-up fade-in for newly revealed values */
+@keyframes slideUpFade {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* Horizontal shimmer sweep for progress bars */
+@keyframes barShimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 300%  center; }
+}
+
+/* Left-border glow pulse for spec cells and metric boxes */
+@keyframes borderGlowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);    border-color: var(--border-subtle); }
+  40%      { box-shadow: 0 0 14px 2px rgba(56, 189, 248, 0.45); border-color: var(--cyan-bright); }
+}
+
+/* Critical state pulse – red breathing for danger metrics */
+@keyframes criticalPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+  50%      { box-shadow: 0 0 18px 4px rgba(244, 63, 94, 0.55); }
+}
+
+/* Pill morph: status pill smoothly cross-fades when class changes */
+@keyframes pillMorph {
+  0%   { opacity: 0.35; transform: scaleX(0.93); }
+  100% { opacity: 1;    transform: scaleX(1);    }
+}
+
+/* Typewriter cursor blink for the Telegram preview */
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Token pass pop-in when a new QR is generated */
+@keyframes qrPopIn {
+  0%   { opacity: 0; transform: scale(0.82) rotate(-3deg); }
+  65%  { opacity: 1; transform: scale(1.06) rotate(1deg);  }
+  100% { opacity: 1; transform: scale(1)    rotate(0deg);  }
+}
+
+/* Log entry slide-in from the top */
+@keyframes logSlideIn {
+  0%   { opacity: 0; transform: translateY(-14px); }
+  100% { opacity: 1; transform: translateY(0);     }
+}
+
+/* Occupation bar fill transition (handled via JS width change + this shimmer) */
+@keyframes fillGrow {
+  0%   { opacity: 0.5; }
+  100% { opacity: 1;   }
+}
+
+/* --- Reusable animation utility classes --- */
+
+/* Applied to .val spec cells when shelter is switched */
+.anim-metric-pop {
+  animation: metricPop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Applied to burn-rate big numbers when sliders move */
+.anim-slide-up {
+  animation: slideUpFade 0.28s ease-out both;
+}
+
+/* Applied to the whole .burn-status-pill on class change */
+.anim-pill-morph {
+  animation: pillMorph 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Applied to .burn-metric-box on danger threshold cross */
+.anim-critical-pulse {
+  animation: criticalPulse 1.6s ease-in-out infinite;
+}
+
+/* Applied to shelter spec cells on shelter switch */
+.anim-border-glow {
+  animation: borderGlowPulse 0.7s ease-out both;
+}
+
+/* Applied to the QR SVG container when a new pass is forged */
+.anim-qr-pop {
+  animation: qrPopIn 0.52s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Applied to each new gatekeeper log entry row */
+.anim-log-entry {
+  animation: logSlideIn 0.28s ease-out both;
+}
+
+/* --- Progress bar shimmer overlay --- */
+.progress-fill {
+  transition: width 0.65s cubic-bezier(0.34, 1.2, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill.animating::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: barShimmer 0.75s linear both;
+}
+
+/* Smooth transition on all shelter panel text values */
+.val {
+  transition: color 0.25s ease, opacity 0.2s ease;
+}
+
+/* Burn metric numbers get a smooth color shift */
+#metricWaterHours,
+#metricFoodHours {
+  transition: color 0.35s ease;
+}
+
 /* Toast Notification */
 .toast-notice {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid var(--cyan-bright);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px var(--cyan-glow);
-  color: #ffffff;
+  background: var(--bg-card-elevated);
+  border: 1px solid var(--border-active);
+  box-shadow: var(--shadow-panel), 0 0 20px var(--cyan-glow);
+  color: var(--text-main);
   padding: 0.85rem 1.4rem;
   border-radius: var(--radius-md);
   font-size: 0.88rem;

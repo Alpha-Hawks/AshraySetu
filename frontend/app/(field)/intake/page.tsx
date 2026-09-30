@@ -23,6 +23,7 @@ import { db, initializeDatabase, type Shelter } from "@/lib/db/dexie";
 import { translations, type Language } from "@/lib/locales/translations";
 import { encodeQRPayload, generateQRCodeDataURL } from "@/lib/qr/codec";
 import { syncManager } from "@/lib/sync/syncManager";
+import { cn } from "@/lib/utils";
 
 function getLocalTimeZone(): string {
   try {
@@ -57,6 +58,81 @@ function formatClockTime(
 }
 
 type MorphState = "idle" | "error" | "morphing" | "synthesizing" | "success";
+
+interface PillStepperProps {
+  value: number;
+  onIncrement: () => void;
+  onDecrement: () => void;
+  disabledDecrement?: boolean;
+  disabledIncrement?: boolean;
+  size?: "md" | "lg";
+  valueColor?: string;
+  ariaLabel?: string;
+  className?: string;
+}
+
+function PillStepper({
+  value,
+  onIncrement,
+  onDecrement,
+  disabledDecrement = false,
+  disabledIncrement = false,
+  size = "md",
+  valueColor = "text-white",
+  ariaLabel,
+  className,
+}: PillStepperProps) {
+  const isLg = size === "lg";
+
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className={cn(
+        "inline-flex items-center justify-between bg-black border border-zinc-800 rounded-full select-none shadow-sm shadow-black/50 shrink-0",
+        isLg ? "h-11 px-1.5 min-w-[130px] gap-2" : "h-9 px-1 min-w-[96px] gap-1",
+        className
+      )}
+    >
+      <button
+        type="button"
+        onClick={onDecrement}
+        disabled={disabledDecrement}
+        className={cn(
+          "rounded-full bg-[#242429] hover:bg-[#2f3037] active:scale-90 disabled:opacity-25 disabled:pointer-events-none text-zinc-300 hover:text-white flex items-center justify-center transition-all shrink-0",
+          isLg ? "w-8 h-8" : "w-7 h-7"
+        )}
+        title="Decrease"
+      >
+        <Minus className={cn("stroke-[2.5]", isLg ? "w-4 h-4" : "w-3.5 h-3.5")} />
+      </button>
+
+      <span
+        className={cn(
+          "font-mono font-bold tracking-tight text-center tabular-nums leading-none select-none px-2",
+          valueColor,
+          isLg ? "text-xl min-w-[2.75rem]" : "text-sm min-w-[1.75rem]"
+        )}
+        style={{ fontFeatureSettings: '"zero" 1' }}
+      >
+        {value}
+      </span>
+
+      <button
+        type="button"
+        onClick={onIncrement}
+        disabled={disabledIncrement}
+        className={cn(
+          "rounded-full bg-[#242429] hover:bg-[#2f3037] active:scale-90 disabled:opacity-25 disabled:pointer-events-none text-zinc-300 hover:text-white flex items-center justify-center transition-all shrink-0",
+          isLg ? "w-8 h-8" : "w-7 h-7"
+        )}
+        title="Increase"
+      >
+        <Plus className={cn("stroke-[2.5]", isLg ? "w-4 h-4" : "w-3.5 h-3.5")} />
+      </button>
+    </div>
+  );
+}
 
 export default function IntakePage() {
   const [lang, setLang] = useState<Language>("en");
@@ -340,7 +416,7 @@ export default function IntakePage() {
     try {
       localStorage.setItem("ashraysetu_last_qr_payload", qrPayload);
       localStorage.setItem("ashraysetu_last_qr_url", qrDataUrl);
-    } catch {}
+    } catch { }
 
     // Reset form inputs
     setHeadName("");
@@ -421,11 +497,10 @@ export default function IntakePage() {
               value={headName}
               onChange={(e) => setHeadName(e.target.value)}
               placeholder={t.headNamePlaceholder}
-              className={`w-full bg-slate-950 border rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition-all duration-300 ${
-                morphState === "error"
+              className={`w-full bg-slate-950 border rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition-all duration-300 ${morphState === "error"
                   ? "border-rose-500 ring-2 ring-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.4)] animate-pulse"
                   : "border-slate-700 focus:border-sky-500"
-              }`}
+                }`}
             />
           </div>
 
@@ -466,7 +541,7 @@ export default function IntakePage() {
             </div>
             <div className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30 font-semibold flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>AUTO-CALCULATED</span>
+              <span>AUTO-SYNCHRONIZATION</span>
             </div>
           </div>
 
@@ -483,28 +558,14 @@ export default function IntakePage() {
                 Formula: {maleCount}M + {femaleCount}F + {infantCount}Inf + {elderlyCount}Eld = {totalMembers}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => adjustTotal(-1)}
-                disabled={totalMembers <= 1}
-                className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold transition shadow"
-                title="Decrease family member"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <span className="w-10 text-center font-black text-xl text-sky-400 font-mono">
-                {totalMembers}
-              </span>
-              <button
-                type="button"
-                onClick={() => adjustTotal(1)}
-                className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-white flex items-center justify-center font-bold transition shadow"
-                title="Add family member"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
+            <PillStepper
+              size="lg"
+              value={totalMembers}
+              onDecrement={() => adjustTotal(-1)}
+              onIncrement={() => adjustTotal(1)}
+              disabledDecrement={totalMembers <= 1}
+              ariaLabel="Total Members"
+            />
           </div>
 
           {/* Gender & Age Breakdown Grids */}
@@ -517,26 +578,13 @@ export default function IntakePage() {
                 </span>
                 <span className="text-[10px] text-slate-500">18–60 yrs</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => adjustMale(-1)}
-                  disabled={maleCount <= 0 || (totalMembers <= 1 && maleCount === 1)}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center"
-                >
-                  -
-                </button>
-                <span className="w-6 text-center text-xs font-bold font-mono text-white">
-                  {maleCount}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => adjustMale(1)}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-bold text-white flex items-center justify-center"
-                >
-                  +
-                </button>
-              </div>
+              <PillStepper
+                value={maleCount}
+                onDecrement={() => adjustMale(-1)}
+                onIncrement={() => adjustMale(1)}
+                disabledDecrement={maleCount <= 0 || (totalMembers <= 1 && maleCount === 1)}
+                ariaLabel="Adult Males"
+              />
             </div>
 
             {/* Adult Females */}
@@ -547,26 +595,13 @@ export default function IntakePage() {
                 </span>
                 <span className="text-[10px] text-slate-500">18–60 yrs</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => adjustFemale(-1)}
-                  disabled={femaleCount <= 0 || (totalMembers <= 1 && femaleCount === 1)}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center"
-                >
-                  -
-                </button>
-                <span className="w-6 text-center text-xs font-bold font-mono text-white">
-                  {femaleCount}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => adjustFemale(1)}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-bold text-white flex items-center justify-center"
-                >
-                  +
-                </button>
-              </div>
+              <PillStepper
+                value={femaleCount}
+                onDecrement={() => adjustFemale(-1)}
+                onIncrement={() => adjustFemale(1)}
+                disabledDecrement={femaleCount <= 0 || (totalMembers <= 1 && femaleCount === 1)}
+                ariaLabel="Adult Females"
+              />
             </div>
 
             {/* Infants Under 5 */}
@@ -578,26 +613,13 @@ export default function IntakePage() {
                 </span>
                 <span className="text-[10px] text-slate-500">Under 5 yrs</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => adjustInfant(-1)}
-                  disabled={infantCount <= 0 || (totalMembers <= 1 && infantCount === 1)}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center"
-                >
-                  -
-                </button>
-                <span className="w-6 text-center text-xs font-bold font-mono text-amber-400">
-                  {infantCount}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => adjustInfant(1)}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-bold text-white flex items-center justify-center"
-                >
-                  +
-                </button>
-              </div>
+              <PillStepper
+                value={infantCount}
+                onDecrement={() => adjustInfant(-1)}
+                onIncrement={() => adjustInfant(1)}
+                disabledDecrement={infantCount <= 0 || (totalMembers <= 1 && infantCount === 1)}
+                ariaLabel="Infants"
+              />
             </div>
 
             {/* Elderly Above 60 */}
@@ -609,26 +631,13 @@ export default function IntakePage() {
                 </span>
                 <span className="text-[10px] text-slate-500">Over 60 yrs</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => adjustElderly(-1)}
-                  disabled={elderlyCount <= 0 || (totalMembers <= 1 && elderlyCount === 1)}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center"
-                >
-                  -
-                </button>
-                <span className="w-6 text-center text-xs font-bold font-mono text-indigo-400">
-                  {elderlyCount}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => adjustElderly(1)}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-bold text-white flex items-center justify-center"
-                >
-                  +
-                </button>
-              </div>
+              <PillStepper
+                value={elderlyCount}
+                onDecrement={() => adjustElderly(-1)}
+                onIncrement={() => adjustElderly(1)}
+                disabledDecrement={elderlyCount <= 0 || (totalMembers <= 1 && elderlyCount === 1)}
+                ariaLabel="Elderly"
+              />
             </div>
           </div>
 
@@ -642,26 +651,13 @@ export default function IntakePage() {
                 Mound accommodation (separate from human capacity)
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => adjustLivestock(-1)}
-                disabled={livestockCount <= 0}
-                className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center"
-              >
-                -
-              </button>
-              <span className="w-6 text-center text-xs font-bold font-mono text-emerald-400">
-                {livestockCount}
-              </span>
-              <button
-                type="button"
-                onClick={() => adjustLivestock(1)}
-                className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-bold text-white flex items-center justify-center"
-              >
-                +
-              </button>
-            </div>
+            <PillStepper
+              value={livestockCount}
+              onDecrement={() => adjustLivestock(-1)}
+              onIncrement={() => adjustLivestock(1)}
+              disabledDecrement={livestockCount <= 0}
+              ariaLabel="Livestock"
+            />
           </div>
         </div>
 
@@ -695,11 +691,10 @@ export default function IntakePage() {
                   key={item.id}
                   type="button"
                   onClick={() => setVulnerability(item.id)}
-                  className={`p-3 rounded-xl border text-left text-xs font-medium flex items-center gap-2.5 transition ${
-                    isSelected
+                  className={`p-3 rounded-xl border text-left text-xs font-medium flex items-center gap-2.5 transition ${isSelected
                       ? "bg-slate-800 border-sky-500 text-white shadow-md ring-1 ring-sky-500"
                       : "bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800/40"
-                  }`}
+                    }`}
                 >
                   <Icon className={`w-4 h-4 ${item.color}`} />
                   <span className="leading-tight">{item.label}</span>
@@ -734,12 +729,12 @@ export default function IntakePage() {
             animate={
               morphState === "error"
                 ? {
-                    x: [0, -10, 10, -8, 8, -4, 4, 0],
-                    transition: { duration: 0.5, ease: "easeInOut" },
-                  }
+                  x: [0, -10, 10, -8, 8, -4, 4, 0],
+                  transition: { duration: 0.5, ease: "easeInOut" },
+                }
                 : morphState === "idle"
-                ? { width: "100%", borderRadius: "16px", scale: 1 }
-                : { width: "310px", borderRadius: "9999px", scale: [1, 0.98, 1.02, 1] }
+                  ? { width: "100%", borderRadius: "16px", scale: 1 }
+                  : { width: "310px", borderRadius: "9999px", scale: [1, 0.98, 1.02, 1] }
             }
             whileHover={morphState === "idle" ? { scale: 1.01 } : {}}
             whileTap={morphState === "idle" ? { scale: 0.985 } : {}}
@@ -747,15 +742,14 @@ export default function IntakePage() {
               layout: { type: "spring", stiffness: 340, damping: 26 },
               scale: { duration: 0.2 },
             }}
-            className={`relative overflow-hidden h-14 font-bold text-sm select-none transition-colors duration-300 flex items-center justify-center shadow-xl ${
-              morphState === "error"
+            className={`relative overflow-hidden h-14 font-bold text-sm select-none transition-colors duration-300 flex items-center justify-center shadow-xl ${morphState === "error"
                 ? "bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white border border-rose-400 shadow-rose-600/40"
                 : morphState === "success"
-                ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white border border-emerald-300 shadow-[0_0_35px_rgba(16,185,129,0.65)]"
-                : morphState === "morphing" || morphState === "synthesizing"
-                ? "bg-slate-950 text-white border-2 border-sky-400 shadow-[0_0_35px_rgba(56,189,248,0.45)] ring-2 ring-sky-500/30"
-                : "bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:via-blue-500 hover:to-indigo-500 text-white border border-sky-400/30 shadow-sky-600/35 group"
-            }`}
+                  ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white border border-emerald-300 shadow-[0_0_35px_rgba(16,185,129,0.65)]"
+                  : morphState === "morphing" || morphState === "synthesizing"
+                    ? "bg-slate-950 text-white border-2 border-sky-400 shadow-[0_0_35px_rgba(56,189,248,0.45)] ring-2 ring-sky-500/30"
+                    : "bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:via-blue-500 hover:to-indigo-500 text-white border border-sky-400/30 shadow-sky-600/35 group"
+              }`}
           >
             {/* Idle Ambient Light Sheen */}
             {morphState === "idle" && (

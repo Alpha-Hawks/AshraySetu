@@ -3,6 +3,26 @@
    Bay of Bengal Cyclone Radar, Sphere Inventory Simulator, QR Pass Engine & District Matrix
    ========================================================================== */
 
+/* ---- Widget animation helper ----
+   Usage: animateEl(el, 'anim-metric-pop')
+   Removes + re-adds the class to replay the animation even if already present. */
+function animateEl(el, cls) {
+  if (!el) return;
+  el.classList.remove(cls);
+  // Force reflow so the animation replays
+  void el.offsetWidth;
+  el.classList.add(cls);
+}
+
+/* Trigger shimmer on the progress fill bar */
+function animateFill(fillEl) {
+  if (!fillEl) return;
+  fillEl.classList.remove('animating');
+  void fillEl.offsetWidth;
+  fillEl.classList.add('animating');
+  fillEl.addEventListener('animationend', () => fillEl.classList.remove('animating'), { once: true });
+}
+
 // --- Comprehensive 18 Coastal Districts Dataset (OSDMA & APSDMA) ---
 const COASTAL_DISTRICTS = [
   // 12 Reorganized Coastal Districts of Andhra Pradesh
@@ -694,21 +714,26 @@ function selectShelter(shelter) {
   const fillEl = document.getElementById('selectedShelterMeterFill');
   const pctEl = document.getElementById('selectedShelterMeterPct');
 
-  if (nameEl) nameEl.textContent = shelter.name;
-  if (metaEl) metaEl.textContent = `${shelter.panchayat}, ${shelter.block}, ${shelter.district} (${shelter.state})`;
-  if (capEl) capEl.textContent = `${shelter.capacity} evacuees`;
-  if (occEl) occEl.textContent = `${shelter.occupancy} admitted`;
-  if (waterEl) waterEl.textContent = `${shelter.waterLiters.toLocaleString()} L`;
-  if (surgeEl) surgeEl.textContent = `${shelter.surgeBufferKm} km from shore`;
-  if (inchargeEl) inchargeEl.textContent = `${shelter.incharge} (📞 ${shelter.phone})`;
+  if (nameEl) { nameEl.textContent = shelter.name; animateEl(nameEl, 'anim-slide-up'); }
+  if (metaEl) { metaEl.textContent = `${shelter.panchayat}, ${shelter.block}, ${shelter.district} (${shelter.state})`; animateEl(metaEl, 'anim-slide-up'); }
+  if (capEl)  { capEl.textContent  = `${shelter.capacity} evacuees`;                  animateEl(capEl,  'anim-metric-pop'); }
+  if (occEl)  { occEl.textContent  = `${shelter.occupancy} admitted`;                 animateEl(occEl,  'anim-metric-pop'); }
+  if (waterEl){ waterEl.textContent= `${shelter.waterLiters.toLocaleString()} L`;    animateEl(waterEl,'anim-metric-pop'); }
+  if (surgeEl){ surgeEl.textContent= `${shelter.surgeBufferKm} km from shore`;       animateEl(surgeEl,'anim-border-glow'); }
+  if (inchargeEl) { inchargeEl.textContent = `${shelter.incharge} (📞 ${shelter.phone})`; animateEl(inchargeEl, 'anim-slide-up'); }
 
   const pct = Math.round((shelter.occupancy / shelter.capacity) * 100);
   if (fillEl) {
     fillEl.style.width = `${Math.min(pct, 100)}%`;
     if (pct > 80) fillEl.classList.add('danger');
     else fillEl.classList.remove('danger');
+    animateFill(fillEl);
   }
-  if (pctEl) pctEl.textContent = `${pct}% Occupied`;
+  if (pctEl) {
+    pctEl.textContent = pct > 80 ? `⚠️ ${pct}% (Near Capacity)` : `✓ ${pct}% Occupied`;
+    pctEl.style.color = pct > 80 ? 'var(--crimson-bright)' : 'var(--emerald-bright)';
+    animateEl(pctEl, 'anim-metric-pop');
+  }
 
   // Update Quick Switcher active buttons
   document.querySelectorAll('.shelter-btn-item').forEach(btn => {
@@ -781,24 +806,54 @@ function initInventoryCalculator() {
     const foodDailyEl = document.getElementById('metricDailyFood');
     const statusPill = document.getElementById('burnStatusPill');
 
-    if (waterHrsEl) waterHrsEl.textContent = `${Math.max(0, Math.floor(waterHoursRemaining))}h`;
-    if (foodHrsEl) foodHrsEl.textContent = `${Math.max(0, Math.floor(foodHoursRemaining))}h`;
-    if (waterDailyEl) waterDailyEl.textContent = `${dailyWaterLiters.toLocaleString()} L/day`;
-    if (foodDailyEl) foodDailyEl.textContent = `${dailyFoodPacks.toLocaleString()} packs/day`;
-
-    // Status Pill Evaluation
+    // Status Pill Evaluation & Thresholds
     const criticalThresholdHours = 24.0;
     const warningThresholdHours = 48.0;
 
-    if (waterHoursRemaining < criticalThresholdHours || foodHoursRemaining < criticalThresholdHours) {
-      statusPill.className = "burn-status-pill critical";
+    // Apple HIG: Ensure color consistency with semantic status
+    if (waterHrsEl) {
+      waterHrsEl.textContent = `${Math.max(0, Math.floor(waterHoursRemaining))}h`;
+      if (waterHoursRemaining < criticalThresholdHours) {
+        waterHrsEl.style.color = 'var(--crimson-bright)';
+      } else if (waterHoursRemaining < warningThresholdHours) {
+        waterHrsEl.style.color = 'var(--amber-bright)';
+      } else {
+        waterHrsEl.style.color = 'var(--emerald-bright)';
+      }
+      animateEl(waterHrsEl, 'anim-slide-up');
+    }
+
+    if (foodHrsEl) {
+      foodHrsEl.textContent = `${Math.max(0, Math.floor(foodHoursRemaining))}h`;
+      if (foodHoursRemaining < criticalThresholdHours) {
+        foodHrsEl.style.color = 'var(--crimson-bright)';
+      } else if (foodHoursRemaining < warningThresholdHours) {
+        foodHrsEl.style.color = 'var(--amber-bright)';
+      } else {
+        foodHrsEl.style.color = 'var(--emerald-bright)';
+      }
+      animateEl(foodHrsEl, 'anim-slide-up');
+    }
+
+    if (waterDailyEl) { waterDailyEl.textContent = `${dailyWaterLiters.toLocaleString()} L/day`;       animateEl(waterDailyEl, 'anim-metric-pop'); }
+    if (foodDailyEl)  { foodDailyEl.textContent  = `${dailyFoodPacks.toLocaleString()} packs/day`;     animateEl(foodDailyEl,  'anim-metric-pop'); }
+
+    const isCritical = waterHoursRemaining < criticalThresholdHours || foodHoursRemaining < criticalThresholdHours;
+    const isWarning  = waterHoursRemaining < warningThresholdHours  || foodHoursRemaining < warningThresholdHours;
+
+    if (isCritical) {
+      statusPill.className = "burn-status-pill critical anim-pill-morph";
       statusPill.innerHTML = "🚨 CRITICAL STOCK DEFICIT (< 24H REMAINING)";
-    } else if (waterHoursRemaining < warningThresholdHours || foodHoursRemaining < warningThresholdHours) {
-      statusPill.className = "burn-status-pill warning";
+      // Animate metric boxes red pulse
+      [waterHrsEl, foodHrsEl].forEach(el => el && animateEl(el.closest('.burn-metric-box') || el, 'anim-critical-pulse'));
+    } else if (isWarning) {
+      statusPill.className = "burn-status-pill warning anim-pill-morph";
       statusPill.innerHTML = "⚠️ WARNING: REPLENISHMENT REQUIRED (< 48H)";
+      [waterHrsEl, foodHrsEl].forEach(el => el && el.classList && el.classList.remove('anim-critical-pulse'));
     } else {
-      statusPill.className = "burn-status-pill safe";
+      statusPill.className = "burn-status-pill safe anim-pill-morph";
       statusPill.innerHTML = "🛡️ STABLE BUFFER: SPHERE COMPLIANT (> 48H)";
+      [waterHrsEl, foodHrsEl].forEach(el => el && el.classList && el.classList.remove('anim-critical-pulse'));
     }
 
     // Update Telegram SOS Preview text
@@ -888,11 +943,16 @@ function generateQrPass() {
 
   const hashBadge = document.getElementById('qrHashBadge');
   const tokenSummary = document.getElementById('qrTokenSummary');
+  const isP1 = triage.startsWith('P1');
+  const isP2 = triage.startsWith('P2');
+  const triageColor = isP1 ? 'var(--crimson-bright)' : (isP2 ? 'var(--amber-bright)' : 'var(--emerald-bright)');
+  const triageIcon = isP1 ? '🚨 ' : (isP2 ? '⚡ ' : '✓ ');
+
   if (hashBadge) hashBadge.textContent = `TOKEN PASS ID: ${tokenCode}`;
   if (tokenSummary) {
     tokenSummary.innerHTML = `
       <strong>${name}</strong> (Family of ${count}, ${infants} Infant)<br>
-      Hamlet: ${hamlet} | Category: <span style="color:#fb7185;font-weight:700;">${triage}</span>
+      Hamlet: ${hamlet} | Category: <span style="color: ${triageColor}; font-weight: 700;">${triageIcon}${triage}</span>
     `;
   }
 
@@ -942,6 +1002,13 @@ function renderQrSvg() {
       ${rects}
     </svg>
   `;
+
+  // Pop-in animation when new QR pass is forged
+  animateEl(box, 'anim-qr-pop');
+
+  // Also animate the token hash badge and summary
+  animateEl(document.getElementById('qrHashBadge'),   'anim-slide-up');
+  animateEl(document.getElementById('qrTokenSummary'), 'anim-slide-up');
 }
 
 window.simulateGateCheckin = function() {
@@ -957,6 +1024,8 @@ window.simulateGateCheckin = function() {
     const entry = document.createElement('div');
     entry.style.marginBottom = "4px";
     entry.innerHTML = `[${now}] ✅ TOKEN VERIFIED & ADMITTED | Bunk Hall B-04 Assigned. Headcount: ${currentSelectedShelter.occupancy}/${currentSelectedShelter.capacity}`;
+    // Slide-in animation for new log entry
+    entry.classList.add('anim-log-entry');
     logBox.prepend(entry);
   }
 
@@ -1075,9 +1144,57 @@ window.copyHelpline = function(number) {
 };
 
 // ==========================================================================
+// APPLE HUMAN INTERFACE GUIDELINES (HIG) APPEARANCE / THEME CONTROLLER
+// ==========================================================================
+function initThemeController() {
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const themeLabel = document.getElementById('themeLabel');
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+
+  // Check saved preference or system preference
+  const savedTheme = localStorage.getItem('ashraysetu-theme');
+  const systemPrefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+
+  let currentTheme = savedTheme || (systemPrefersLight ? 'light' : 'dark');
+
+  function applyTheme(theme) {
+    currentTheme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    if (themeLabel) {
+      themeLabel.textContent = theme === 'light' ? 'Light' : 'Dark';
+    }
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', theme === 'light' ? '#f8fafc' : '#050811');
+    }
+    localStorage.setItem('ashraysetu-theme', theme);
+  }
+
+  // Initial application
+  applyTheme(currentTheme);
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+      applyTheme(nextTheme);
+      showToast(`Appearance switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} mode (Apple HIG)`);
+    });
+  }
+
+  // Listen to system preference changes if user hasn't explicitly set one
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('ashraysetu-theme')) {
+        applyTheme(e.matches ? 'light' : 'dark');
+      }
+    });
+  }
+}
+
+// ==========================================================================
 // INITIALIZATION ON DOM READY
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
+  initThemeController();
   initCycloneRadar();
   renderShelterQuickList();
   selectShelter(SHELTERS_SAMPLE[0]);
