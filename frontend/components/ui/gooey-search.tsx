@@ -161,8 +161,11 @@ export interface GooeySearchProps {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
+// Stable default: a fresh `[]` per render would retrigger the search effect forever.
+const NO_ITEMS: string[] = [];
+
 export function GooeySearch({
-  items = [],
+  items = NO_ITEMS,
   onSearch,
   placeholder = "Type to search...",
   buttonLabel = "Search",
@@ -235,7 +238,7 @@ export function GooeySearch({
           transform-origin: center center;
         }
         @keyframes gooeySearchSpin { to { transform: rotate(180deg); } }
-        .gooey-search-input::placeholder { color: var(--background); opacity: 0.55; }
+        .gooey-search-input::placeholder { color: rgba(224, 242, 254, 0.7); }
       `}</style>
 
       {/* SVG gooey filter — zero size, no layout impact */}
@@ -288,15 +291,17 @@ export function GooeySearch({
                   exit="exit"
                   transition={getResultTransition(index)}
                   style={{
-                    backgroundColor: "var(--foreground)",
+                    backgroundColor: "#07132b",
                     borderRadius: 40,
                     padding: resultPadding,
                     width: "100%",
-                    color: "var(--background)",
+                    color: "#FFFFFF",
                     position: "absolute",
                     left: isUnsupported ? 0 : -30,
                     fontSize: 14,
                     cursor: "pointer",
+                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                    boxShadow: "0 4px 16px rgba(7, 19, 43, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -316,7 +321,7 @@ export function GooeySearch({
           </motion.div>
         </AnimatePresence>
 
-        {/* Morphing search button */}
+        {/* Morphing search button - Dark Blue Liquid Glass */}
         <motion.div
           variants={buttonMotionVariants}
           initial="step1"
@@ -328,12 +333,16 @@ export function GooeySearch({
           role={step === 1 ? "button" : undefined}
           aria-label={step === 1 ? "Open search" : undefined}
           style={{
-            backgroundColor: "var(--foreground)",
-            color: "var(--background)",
+            backgroundColor: "#07132b",
+            background: "linear-gradient(135deg, #07132b 0%, #0d214a 100%)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            color: "#FFFFFF",
             cursor: "pointer",
             letterSpacing: -0.5,
             outline: "none",
-            border: "none",
+            border: "1px solid rgba(56, 189, 248, 0.35)",
+            boxShadow: "0 2px 10px rgba(7, 19, 43, 0.4), inset 0 1px 1.5px rgba(255, 255, 255, 0.25)",
             borderRadius: 9999,
             padding: btnPadding,
           }}
@@ -345,9 +354,10 @@ export function GooeySearch({
                 textAlign: "center",
                 position: "relative",
                 left: 4,
-                color: "var(--background)",
-                opacity: 0.72,
+                color: "#FFFFFF",
+                opacity: 0.95,
                 fontSize: 14,
+                fontWeight: 600,
                 display: "block",
               }}
             >
@@ -366,14 +376,14 @@ export function GooeySearch({
                 backgroundColor: "transparent",
                 outline: "none",
                 border: "none",
-                color: "var(--background)",
+                color: "#FFFFFF",
                 fontSize: 14,
               }}
             />
           )}
         </motion.div>
 
-        {/* Floating icon bubble */}
+        {/* Floating icon bubble - Dark Blue */}
         <AnimatePresence mode="wait">
           {step === 2 && (
             <motion.div
@@ -385,7 +395,10 @@ export function GooeySearch({
               transition={{ delay: 0.1, duration: 0.85, type: "spring", bounce: 0.15 }}
               style={{
                 position: "absolute",
-                backgroundColor: "var(--foreground)",
+                backgroundColor: "#07132b",
+                background: "linear-gradient(135deg, #07132b 0%, #0d214a 100%)",
+                border: "1px solid rgba(56, 189, 248, 0.35)",
+                boxShadow: "0 2px 8px rgba(7, 19, 43, 0.35)",
                 width: isUnsupported ? 36 : 46,
                 height: isUnsupported ? 36 : 46,
                 right: -5,
@@ -394,7 +407,7 @@ export function GooeySearch({
                 justifyContent: "center",
                 alignItems: "center",
                 borderRadius: 9999,
-                color: "var(--background)",
+                color: "#38bdf8",
               }}
             >
               {isLoading ? <LoadingSvgIcon /> : <SearchSvgIcon isUnsupported={isUnsupported} />}

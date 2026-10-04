@@ -11,6 +11,8 @@ out/
 build/
 dist/
 */dist/
+test-results/
+*/test-results/
 
 # TypeScript Cache
 *.tsbuildinfo

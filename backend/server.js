@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
+import { directionsRouter } from "./routing/router.js";
 
 dotenv.config();
 
@@ -21,6 +22,10 @@ app.use(
     credentials: true,
   })
 );
+
+// Mount privacy-preserving directions router before global parser (FR-D2)
+app.use("/api/directions", express.json({ limit: "10kb" }), directionsRouter);
+
 app.use(express.json());
 
 // Built-in lightweight Cookie Parser
@@ -72,6 +77,24 @@ try {
   }
 } catch (e) {
   console.warn("Could not load AP datasets", e);
+}
+
+// Load Odisha datasets (OSDMA)
+const odishaCyclonesPath = path.join(__dirname, "data", "odisha_cyclones.json");
+const odishaDistrictsPath = path.join(__dirname, "data", "odisha_districts.json");
+
+let odishaCyclones = [];
+let odishaDistricts = [];
+
+try {
+  if (fs.existsSync(odishaCyclonesPath)) {
+    odishaCyclones = JSON.parse(fs.readFileSync(odishaCyclonesPath, "utf-8"));
+  }
+  if (fs.existsSync(odishaDistrictsPath)) {
+    odishaDistricts = JSON.parse(fs.readFileSync(odishaDistrictsPath, "utf-8"));
+  }
+} catch (e) {
+  console.warn("Could not load Odisha datasets", e);
 }
 
 // QR Scan Records Dataset & Persistence
@@ -650,7 +673,7 @@ app.get("/api/health", (req, res) => {
     status: "HEALTHY",
     service: "AshraySetu Disaster Management Backend",
     version: "1.2.0",
-    modules: ["Odisha Kendrapara Module", "Andhra Pradesh Cyclone Module", "FreeLLMAPI RAG Assistant"],
+    modules: ["Odisha Kendrapara Module", "Odisha State Disaster Hub (OSDMA)", "Andhra Pradesh Cyclone Module (APSDMA)", "FreeLLMAPI RAG Assistant"],
     timestamp: new Date().toISOString(),
   });
 });
@@ -792,6 +815,85 @@ app.get("/api/ap/emergency-contacts", (req, res) => {
   });
 });
 
+// ==========================================
+// ODISHA CYCLONE MODULE APIS (OSDMA)
+// ==========================================
+
+/**
+ * Odisha Coastal Districts Directory
+ */
+app.get("/api/odisha/districts", (req, res) => {
+  res.json({
+    state: "Odisha",
+    total_coastal_districts: odishaDistricts.length,
+    districts: odishaDistricts,
+    source: "OSDMA / Special Relief Commissioner, Odisha (Coastal Directory)",
+    last_verified: "2026-10-02",
+  });
+});
+
+/**
+ * Odisha Historical Cyclones Timeline
+ */
+app.get("/api/odisha/cyclones", (req, res) => {
+  const { year, district } = req.query;
+  let list = odishaCyclones;
+
+  if (year) {
+    list = list.filter((c) => c.year === parseInt(String(year), 10));
+  }
+  if (district) {
+    list = list.filter((c) =>
+      c.affected_districts.some((d) =>
+        d.toLowerCase().includes(String(district).toLowerCase())
+      )
+    );
+  }
+
+  res.json({
+    state: "Odisha",
+    total_recorded: list.length,
+    cyclones: list,
+    disclaimer: "All statistics derived from official IMD Technical Reports & OSDMA documentation. Unrecorded metrics marked as 'Data unavailable'.",
+  });
+});
+
+/**
+ * Odisha Historical Cyclone Detailed Dossier
+ */
+app.get("/api/odisha/cyclones/:id", (req, res) => {
+  const cyclone = odishaCyclones.find(
+    (c) => c.id.toLowerCase() === req.params.id.toLowerCase()
+  );
+  if (!cyclone) {
+    return res.status(404).json({ error: "Odisha cyclone record not found" });
+  }
+  res.json({ cyclone });
+});
+
+/**
+ * Odisha Emergency Contacts Directory
+ */
+app.get("/api/odisha/emergency-contacts", (req, res) => {
+  res.json({
+    state: "Odisha",
+    state_emergency_helplines: [
+      { name: "OSDMA State Emergency Operation Centre (SEOC)", number: "1070", toll_free: true },
+      { name: "District Emergency Operation Centre (DEOC)", number: "1077", toll_free: true },
+      { name: "Police Emergency / National Emergency", number: "112", toll_free: true },
+      { name: "Ambulance / Emergency Medical Support", number: "108", toll_free: true },
+      { name: "Marine Police / Coastal Security Helpline (Fishermen Safety)", number: "1093", toll_free: true },
+      { name: "Fire & Disaster Response Services (ODRAF / Fire)", number: "101", toll_free: true },
+    ],
+    district_helplines: odishaDistricts.map((d) => ({
+      district: d.district_name,
+      helpline: d.deoc_helpline,
+    })),
+    source: "Odisha State Disaster Management Authority (OSDMA)",
+    last_verified: "2026-10-02",
+  });
+});
+
 /**
  * AI RAG Query Assistant (Grounded in Verified AP Cyclone Knowledge Base)
  */
@@ -804,8 +906,9 @@ app.post("/api/ai/query", async (req, res) => {
 
     const q = question.toLowerCase();
 
-    // 1. Identify relevant context from verified AP cyclone knowledge base
-    const matchedCyclones = apCyclones.filter((c) => {
+    // 1. Identify relevant context from verified AP & Odisha cyclone knowledge base
+    const allCyclones = [...apCyclones, ...odishaCyclones];
+    const matchedCyclones = allCyclones.filter((c) => {
       const nameMatch = c.cyclone_name.toLowerCase().includes(q) ||
         (q.includes("hudhud") && c.id.includes("HUDHUD")) ||
         (q.includes("michaung") && c.id.includes("MICHAUNG")) ||
@@ -814,7 +917,13 @@ app.post("/api/ai/query", async (req, res) => {
         (q.includes("nilam") && c.id.includes("NILAM")) ||
         (q.includes("diviseema") && c.id.includes("DIVISEEMA")) ||
         (q.includes("gulab") && c.id.includes("GULAB")) ||
-        (q.includes("phethai") && c.id.includes("PHETHAI"));
+        (q.includes("phethai") && c.id.includes("PHETHAI")) ||
+        (q.includes("phailin") && c.id.includes("PHAILIN")) ||
+        (q.includes("fani") && c.id.includes("FANI")) ||
+        (q.includes("yaas") && c.id.includes("YAAS")) ||
+        (q.includes("amphan") && c.id.includes("AMPHAN")) ||
+        (q.includes("super cyclone") && c.id.includes("1999")) ||
+        (q.includes("1971") && c.id.includes("1971"));
 
       const districtMatch = c.affected_districts.some((d) => q.includes(d.toLowerCase()));
       return nameMatch || districtMatch;
@@ -1078,17 +1187,21 @@ app.post("/api/qr/scan", (req, res) => {
       Math.floor((actualScannedAt - actualCreatedAt) / 1000)
     );
 
-    const isDuplicate = Boolean(record && record.qr_scanned_at);
+    const isDuplicate = Boolean(record && (record.qr_scanned_at || record.first_scanned_at));
 
     if (record) {
-      record.scan_count = (record.scan_count || 1) + (record.qr_scanned_at ? 1 : 0);
-      if (!record.first_scanned_at) {
-        record.first_scanned_at = record.qr_scanned_at || actualScannedAt;
+      if (record.qr_scanned_at && !record.first_scanned_at) {
+        record.first_scanned_at = record.qr_scanned_at;
       }
+      record.scan_count = (record.scan_count || 1) + (isDuplicate ? 1 : 0);
       record.last_scanned_at = actualScannedAt;
-      record.qr_created_at = actualCreatedAt;
-      record.qr_scanned_at = actualScannedAt;
-      record.arrival_duration_seconds = durationSeconds;
+
+      if (!isDuplicate) {
+        record.qr_created_at = actualCreatedAt;
+        record.qr_scanned_at = actualScannedAt;
+        record.first_scanned_at = actualScannedAt;
+        record.arrival_duration_seconds = durationSeconds;
+      }
       record.status = "REACHED_SHELTER";
       record.updated_at = serverNow;
     } else {
@@ -1116,8 +1229,10 @@ app.post("/api/qr/scan", (req, res) => {
 
     logActivityEvent({
       type: "SHELTER_ARRIVAL",
-      title: isDuplicate ? "QR Pass Re-Scanned at Gate" : "Citizen Reached Shelter",
-      description: `✓ ${record.head_name} (${record.short_ref}, ${record.total_members} persons) scanned at ${record.shelter_id} in ${formatDuration(durationSeconds)}.`,
+      title: isDuplicate ? "QR Pass Re-Scanned (Duplicate Prevented)" : "Citizen Reached Shelter",
+      description: isDuplicate
+        ? `⚠️ Re-scan detected for ${record.head_name} (${record.short_ref}). Evacuee already admitted; shelter capacity (+${record.total_members} persons) and ration stocks preserved without miscalculation.`
+        : `✓ ${record.head_name} (${record.short_ref}, ${record.total_members} persons) scanned at ${record.shelter_id} in ${formatDuration(durationSeconds)}.`,
       short_ref: record.short_ref,
       head_name: record.head_name,
       duration_seconds: durationSeconds,
@@ -1127,7 +1242,7 @@ app.post("/api/qr/scan", (req, res) => {
       success: true,
       duplicate: isDuplicate,
       message: isDuplicate
-        ? `Pass re-scanned (Scan #${record.scan_count}). Actual scan time updated.`
+        ? `Duplicate scan detected (Scan #${record.scan_count}). Household was already checked into safe shelter. Capacity (+${record.total_members} members) and stock allocation preserved.`
         : "Arrival successfully verified and recorded at shelter gate.",
       short_ref: record.short_ref,
       head_name: record.head_name,
@@ -1135,11 +1250,11 @@ app.post("/api/qr/scan", (req, res) => {
       shelter_id: record.shelter_id,
       total_members: record.total_members,
       qr_created_at: record.qr_created_at,
-      qr_scanned_at: record.qr_scanned_at,
+      qr_scanned_at: record.first_scanned_at || record.qr_scanned_at,
       arrival_duration_seconds: record.arrival_duration_seconds,
       status: "REACHED_SHELTER",
       scan_count: record.scan_count,
-      first_scanned_at: record.first_scanned_at,
+      first_scanned_at: record.first_scanned_at || record.qr_scanned_at,
       last_scanned_at: record.last_scanned_at,
     });
   } catch (err) {

@@ -12,14 +12,8 @@ import {
   PhoneCall,
   CheckSquare,
   Square,
-  Waves,
   Navigation,
-  Compass,
-  Ship,
   Info,
-  ExternalLink,
-  MapPin,
-  Clock,
 } from "lucide-react";
 import { translations, type Language } from "@/lib/locales/translations";
 

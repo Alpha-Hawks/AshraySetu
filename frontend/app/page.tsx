@@ -11,7 +11,6 @@ import {
   ShieldAlert,
   Zap,
   CheckCircle2,
-  AlertTriangle,
 } from "lucide-react";
 import { db, initializeDatabase, type Shelter } from "@/lib/db/dexie";
 import { translations, type Language } from "@/lib/locales/translations";
@@ -142,29 +141,29 @@ export default function HomePage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Alert Header Box */}
-      <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-sky-950 via-slate-900 to-indigo-950 border border-sky-800/40 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-semibold uppercase tracking-wider mb-2">
-              <ShieldAlert className="w-3.5 h-3.5 animate-pulse" />
-              Bay of Bengal Cyclone Advisory Active
+    <div className="space-y-8 max-w-5xl mx-auto">
+      {/* Hero Header Box (Apple Liquid Glass Surface) */}
+      <div className="liquid-glass-card liquid-glass-custom-card p-6 sm:p-8 !rounded-3xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80">
+              <ShieldAlert className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
+              <span>Bay of Bengal Cyclone Advisory Active</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight outline-none">
               {t.appTitle}
             </h1>
-            <p className="text-sm text-slate-300 mt-1 max-w-xl">
+            <p className="text-sm text-slate-600 mt-1 max-w-xl font-normal leading-relaxed">
               Offline-First Disaster Management & Evacuation Platform for Gram
               Panchayat committees in Kendrapara District, Odisha. Operates
               without cellular data or electrical grid power.
             </p>
           </div>
 
+          {/* Evaluator Demo Seed Action (Apple System Blue Pill) */}
           <button
             onClick={seedDemoData}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition shadow-lg shadow-sky-600/30 whitespace-nowrap self-start sm:self-auto"
+            className="px-5 py-3 text-xs font-semibold text-white bg-[#007AFF] hover:bg-[#0066D6] rounded-full shadow-[0_2px_10px_rgba(0,122,255,0.3)] transition active:scale-95 flex items-center gap-2 whitespace-nowrap self-start sm:self-auto cursor-pointer"
           >
             <Zap className="w-4 h-4 text-amber-300" />
             <span>Load Evaluator Demo Seed</span>
@@ -172,84 +171,84 @@ export default function HomePage() {
         </div>
 
         {seedStatus && (
-          <div className="mt-3 p-2 rounded-lg bg-emerald-950/80 border border-emerald-600/40 text-emerald-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
+          <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{seedStatus}</span>
           </div>
         )}
       </div>
 
-      {/* KPI Stats Strip */}
+      {/* KPI Stats Strip (Apple Liquid Glass Cards) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-          <div className="text-xs text-slate-400 font-medium">
+        <div className="liquid-glass-card liquid-glass-custom-card p-4 !min-h-0 space-y-1">
+          <div className="text-xs text-slate-500 font-medium">
             Active Coastal Shelters
           </div>
-          <div className="text-2xl font-black text-sky-400 mt-1">
+          <div className="text-2xl font-black text-[#007AFF]">
             {shelters.length}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
+          <div className="text-[11px] text-slate-400">
             Rajnagar & Mahakalapada
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-          <div className="text-xs text-slate-400 font-medium">
+        <div className="liquid-glass-card liquid-glass-custom-card p-4 !min-h-0 space-y-1">
+          <div className="text-xs text-slate-500 font-medium">
             Registered Households
           </div>
-          <div className="text-2xl font-black text-emerald-400 mt-1">
+          <div className="text-2xl font-black text-emerald-600">
             {householdCount}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
+          <div className="text-[11px] text-slate-400">
             Stored in Local IndexedDB
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-          <div className="text-xs text-slate-400 font-medium">
+        <div className="liquid-glass-card liquid-glass-custom-card p-4 !min-h-0 space-y-1">
+          <div className="text-xs text-slate-500 font-medium">
             Critical Triage Cases
           </div>
-          <div className="text-2xl font-black text-rose-400 mt-1">
+          <div className="text-2xl font-black text-rose-600">
             {triageCount}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
+          <div className="text-[11px] text-slate-400">
             P1 Medical / Vulnerable
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-          <div className="text-xs text-slate-400 font-medium">
+        <div className="liquid-glass-card liquid-glass-custom-card p-4 !min-h-0 space-y-1">
+          <div className="text-xs text-slate-500 font-medium">
             Offline Storage Engine
           </div>
-          <div className="text-2xl font-black text-amber-400 mt-1">100%</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
+          <div className="text-2xl font-black text-amber-600">100%</div>
+          <div className="text-[11px] text-slate-400">
             Dexie.js Transactional
           </div>
         </div>
       </div>
 
-      {/* Role Navigation Cards */}
+      {/* Role Navigation Cards (Apple Liquid Glass Customized Material) */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Link
           href="/intake"
-          className="group p-5 rounded-2xl bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-sky-500/50 transition-all shadow-md flex flex-col justify-between"
+          className="liquid-glass-card liquid-glass-custom-card group p-5 sm:p-6 flex flex-col justify-between"
         >
           <div>
-            <div className="w-12 h-12 rounded-xl bg-sky-600/20 text-sky-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-sky-500/10 text-[#007AFF] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform border border-sky-500/20 backdrop-blur-xs">
               <Users className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-sky-300 transition-colors">
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-[#007AFF] transition-colors">
               M2: Household Intake & Triage
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
               Register arriving families, record infant/elderly headcounts, and
               tag clinical triage priorities (pregnant, bedridden, disabled)
               offline.
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-sky-400 font-semibold">
+          <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-[#007AFF] font-semibold">
             <span>Open Intake Form →</span>
-            <span className="text-[10px] text-slate-500 font-mono">
+            <span className="text-[10px] text-slate-400 font-mono">
               IndexedDB Native
             </span>
           </div>
@@ -257,23 +256,23 @@ export default function HomePage() {
 
         <Link
           href="/inventory"
-          className="group p-5 rounded-2xl bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-amber-500/50 transition-all shadow-md flex flex-col justify-between"
+          className="liquid-glass-card liquid-glass-custom-card group p-5 sm:p-6 flex flex-col justify-between"
         >
           <div>
-            <div className="w-12 h-12 rounded-xl bg-amber-600/20 text-amber-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform border border-amber-500/20 backdrop-blur-xs">
               <Package className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-amber-300 transition-colors">
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-amber-600 transition-colors">
               M4: Shelter Inventory & Burn-Rate
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
               Track drinking water, food packets, baby milk, and ORS. Automated
               Sphere-standard depletion calculations alert before stockouts.
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-amber-400 font-semibold">
+          <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-amber-600 font-semibold">
             <span>View Stock Ledger →</span>
-            <span className="text-[10px] text-slate-500 font-mono">
+            <span className="text-[10px] text-slate-400 font-mono">
               Sphere Standard
             </span>
           </div>
@@ -281,24 +280,24 @@ export default function HomePage() {
 
         <Link
           href="/scan"
-          className="group p-5 rounded-2xl bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/50 transition-all shadow-md flex flex-col justify-between"
+          className="liquid-glass-card liquid-glass-custom-card group p-5 sm:p-6 flex flex-col justify-between"
         >
           <div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform border border-emerald-500/20 backdrop-blur-xs">
               <QrCode className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-emerald-300 transition-colors">
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
               M3: QR Pass & Check-In
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
               Gatekeeper camera scanner to verify offline digital passes,
               confirm family headcounts, and prevent duplicate relief
               entitlements.
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-emerald-400 font-semibold">
+          <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-emerald-600 font-semibold">
             <span>Scan QR Token →</span>
-            <span className="text-[10px] text-slate-500 font-mono">
+            <span className="text-[10px] text-slate-400 font-mono">
               Offline Camera
             </span>
           </div>
@@ -306,24 +305,24 @@ export default function HomePage() {
 
         <Link
           href="/map"
-          className="group p-5 rounded-2xl bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between"
+          className="liquid-glass-card liquid-glass-custom-card group p-5 sm:p-6 flex flex-col justify-between"
         >
           <div>
-            <div className="w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform border border-indigo-500/20 backdrop-blur-xs">
               <MapPin className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors">
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
               M6: Spatial Map & Inundation
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
               Interactive Leaflet map showing Kendrapara coastal shelters,
               geodesic distances, and simulated storm-surge coastal buffers via
               Turf.js.
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-indigo-400 font-semibold">
+          <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-indigo-600 font-semibold">
             <span>Open Spatial Map →</span>
-            <span className="text-[10px] text-slate-500 font-mono">
+            <span className="text-[10px] text-slate-400 font-mono">
               Turf.js GIS
             </span>
           </div>
@@ -331,24 +330,24 @@ export default function HomePage() {
 
         <Link
           href="/dashboard"
-          className="group p-5 rounded-2xl bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-rose-500/50 transition-all shadow-md flex flex-col justify-between sm:col-span-2"
+          className="liquid-glass-card liquid-glass-custom-card group p-5 sm:p-6 flex flex-col justify-between sm:col-span-2"
         >
           <div>
-            <div className="w-12 h-12 rounded-xl bg-rose-600/20 text-rose-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform border border-rose-500/20 backdrop-blur-xs">
               <LayoutDashboard className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-rose-300 transition-colors">
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-rose-600 transition-colors">
               M7 & M8: District Emergency Command Desk (DEOC)
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
               Administrative view for the Block Development Officer (BDO) and
               Tahsildar. Aggregates live capacity saturation, triaged medical
               cases, and sends automated Telegram emergency alerts.
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-rose-400 font-semibold">
+          <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-rose-600 font-semibold">
             <span>View Command Desk →</span>
-            <span className="text-[10px] text-slate-500 font-mono">
+            <span className="text-[10px] text-slate-400 font-mono">
               Telegram Webhook
             </span>
           </div>

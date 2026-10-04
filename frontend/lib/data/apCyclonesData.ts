@@ -1,0 +1,237 @@
+export interface HistoricalCyclone {
+  id: string;
+  cyclone_name: string;
+  year: number;
+  start_date: string;
+  end_date: string;
+  landfall_location: string;
+  affected_districts: string[];
+  maximum_wind_speed_kmh: number | "Data unavailable";
+  rainfall_mm: string | "Data unavailable";
+  storm_surge_meters: number | "Data unavailable";
+  evacuated_population: number | "Data unavailable";
+  casualties: number | "Data unavailable";
+  houses_damaged: number | "Data unavailable";
+  infrastructure_damage: string;
+  agricultural_damage: string;
+  fisheries_impact: string;
+  power_disruption: string;
+  communication_disruption: string;
+  government_response: string;
+  lessons_learned: string;
+  source_name: string;
+  source_url: string;
+  retrieved_at: string;
+  last_verified_at: string;
+}
+
+export const AP_HISTORICAL_CYCLONES: HistoricalCyclone[] = [
+  {
+    id: "AP-CYC-1977-DIVISEEMA",
+    cyclone_name: "Diviseema Cyclone (1977 Andhra Pradesh Cyclone)",
+    year: 1977,
+    start_date: "1977-11-14",
+    end_date: "1977-11-20",
+    landfall_location: "Near Chirala and Nizampatnam, Diviseema region (Krishna / Bapatla coast)",
+    affected_districts: ["Krishna", "Bapatla", "Guntur", "Prakasam"],
+    maximum_wind_speed_kmh: 260,
+    rainfall_mm: "Over 400 mm recorded across coastal belt",
+    storm_surge_meters: 5.5,
+    evacuated_population: 50000,
+    casualties: 10000,
+    houses_damaged: 1000000,
+    infrastructure_damage: "Total destruction of non-engineered dwellings, wash-out of roads, coastal embankments, and culverts across Diviseema island.",
+    agricultural_damage: "Saltwater inundation submerged over 1.2 million hectares of standing paddy; severe soil salinization lasting several seasons.",
+    fisheries_impact: "Catastrophic loss of traditional wooden fishing crafts, catamarans, and coastal artisanal fishing hamlets.",
+    power_disruption: "Complete regional power blackout lasting weeks.",
+    communication_disruption: "Total collapse of telegraph and landline telephone services; physical road cut-offs delayed relief by 48-72 hours.",
+    government_response: "Armed forces deployed for mass air-drops of dry food and clean water; massive dead-body disposal operations to prevent cholera outbreaks.",
+    lessons_learned: "Directly prompted the construction of India's first permanent elevated Multipurpose Cyclone Shelter (MCS) network, early-warning coastal wireless stations, and shelterbelt plantations.",
+    source_name: "India Meteorological Department (IMD) Technical Report / Government of Andhra Pradesh Cyclone Archives",
+    source_url: "https://rsmcnewdelhi.imd.gov.in",
+    retrieved_at: "2026-09-28",
+    last_verified_at: "2026-09-28"
+  },
+  {
+    id: "AP-CYC-1990-MACHILIPATNAM",
+    cyclone_name: "1990 Machilipatnam Cyclone (Super Cyclonic Storm BOB 01)",
+    year: 1990,
+    start_date: "1990-05-04",
+    end_date: "1990-05-10",
+    landfall_location: "Near Machilipatnam, Krishna District",
+    affected_districts: ["Krishna", "East Godavari", "West Godavari", "Guntur", "Visakhapatnam"],
+    maximum_wind_speed_kmh: 235,
+    rainfall_mm: "250 mm to 370 mm recorded over 24 hours",
+    storm_surge_meters: 4.5,
+    evacuated_population: 650000,
+    casualties: 967,
+    houses_damaged: 1400000,
+    infrastructure_damage: "Extensive breaches in irrigation canals and floodbanks; extensive damage to Machilipatnam port and railway lines.",
+    agricultural_damage: "Substantial destruction of summer paddy, banana plantations, and coconut groves across Krishna and Godavari deltas.",
+    fisheries_impact: "Thousands of mechanised and non-mechanised fishing boats smashed at anchorages; aquaculture ponds inundated.",
+    power_disruption: "Widespread transmission tower failures across coastal districts.",
+    communication_disruption: "Severe disruption to telecommunications; emergency wireless ham radio utilized for district coordination.",
+    government_response: "Mass pre-emptive evacuation of 650,000 citizens into newly constructed cyclone shelters, drastically reducing mortality compared to 1977.",
+    lessons_learned: "Demonstrated the life-saving value of community cyclone shelters and early broadcast warnings via All India Radio.",
+    source_name: "IMD Historical Cyclone Archives / WMO Tropical Cyclone Review",
+    source_url: "https://rsmcnewdelhi.imd.gov.in",
+    retrieved_at: "2026-09-28",
+    last_verified_at: "2026-09-28"
+  },
+  {
+    id: "AP-CYC-2010-LAILA",
+    cyclone_name: "Cyclone Laila (Severe Cyclonic Storm)",
+    year: 2010,
+    start_date: "2010-05-17",
+    end_date: "2010-05-21",
+    landfall_location: "Near Bapatla, Guntur / Bapatla coastal district",
+    affected_districts: ["Prakasam", "Bapatla", "Guntur", "Krishna", "West Godavari", "East Godavari"],
+    maximum_wind_speed_kmh: 110,
+    rainfall_mm: "Torrential rainfall exceeding 500 mm in 24 hours in Ongole and Addanki",
+    storm_surge_meters: 2.0,
+    evacuated_population: 125000,
+    casualties: 36,
+    houses_damaged: 28000,
+    infrastructure_damage: "Major breaches in National Highway 16 and South Central Railway tracks; thousands of electric poles uprooted.",
+    agricultural_damage: "Inundation of tobacco curing barns, cotton crops, and horticulture in Prakasam and Guntur districts.",
+    fisheries_impact: "Fishing ban enforced 48 hours prior; fishermen warned to return to Kakinada and Nizampatnam harbours.",
+    power_disruption: "Power supply suspended for 48 hours as safety measure in low-lying mandals.",
+    communication_disruption: "Cellular tower battery exhaustion caused localized mobile network blackouts for 36 hours.",
+    government_response: "APSDMA and NDRF deployed rescue boats; state-level round-the-clock emergency control room activated.",
+    lessons_learned: "Highlighted the critical need for real-time precipitation telemetry to manage flash flooding in coastal river basins.",
+    source_name: "APSDMA Annual Disaster Report 2010 / IMD Cyclone Track Bulletin",
+    source_url: "https://apsdma.ap.gov.in",
+    retrieved_at: "2026-09-28",
+    last_verified_at: "2026-09-28"
+  },
+  {
+    id: "AP-CYC-2012-NILAM",
+    cyclone_name: "Cyclone Nilam (Cyclonic Storm)",
+    year: 2012,
+    start_date: "2012-10-28",
+    end_date: "2012-11-01",
+    landfall_location: "Landfall in northern Tamil Nadu; primary severe rainfall impact in Coastal Andhra Pradesh",
+    affected_districts: ["SPS Nellore", "Prakasam", "Guntur", "Krishna", "Chittoor", "YSR Kadapa"],
+    maximum_wind_speed_kmh: 85,
+    rainfall_mm: "Continuous heavy rainfall between 200 mm and 380 mm across southern coastal districts",
+    storm_surge_meters: 1.5,
+    evacuated_population: 70000,
+    casualties: 44,
+    houses_damaged: 12000,
+    infrastructure_damage: "Flash flooding breached 140 minor irrigation tanks, severing rural road connectivity.",
+    agricultural_damage: "Over 500,000 hectares of standing paddy, sugarcane, and groundnut submerged prior to harvest.",
+    fisheries_impact: "Disruption to marine fishing operations along Nellore and Prakasam coasts.",
+    power_disruption: "Sub-station flooding led to controlled load shedding.",
+    communication_disruption: "Localized landline and cellular outages in rural mandals.",
+    government_response: "Relief camps established in schools and community halls; distribution of chlorinated water and medical kits.",
+    lessons_learned: "Demonstrated that distant cyclonic landfalls can still inflict severe agricultural loss through post-cyclone riverine flooding.",
+    source_name: "Government of Andhra Pradesh Revenue (Disaster Management) Department",
+    source_url: "https://apsdma.ap.gov.in",
+    retrieved_at: "2026-09-28",
+    last_verified_at: "2026-09-28"
+  },
+  {
+    id: "AP-CYC-2014-HUDHUD",
+    cyclone_name: "Cyclone Hudhud (Extremely Severe Cyclonic Storm)",
+    year: 2014,
+    start_date: "2014-10-07",
+    end_date: "2014-10-14",
+    landfall_location: "Direct landfall over Visakhapatnam City (Kailasagiri coast)",
+    affected_districts: ["Visakhapatnam", "Anakapalli", "Vizianagaram", "Srikakulam", "East Godavari"],
+    maximum_wind_speed_kmh: 215,
+    rainfall_mm: "Widespread 200 mm to 380 mm, peak 380 mm in Visakhapatnam urban catchment",
+    storm_surge_meters: 2.5,
+    evacuated_population: 250000,
+    casualties: 49,
+    houses_damaged: 240000,
+    infrastructure_damage: "Unprecedented urban infrastructure devastation: Visakhapatnam Airport roof blown off; 40,000 electricity poles and 800 transformers collapsed; Visakhapatnam port and naval dockyard damaged.",
+    agricultural_damage: "Decimation of coconut, cashew, and sugarcane plantations across North Coastal Andhra; over 200,000 hectares affected.",
+    fisheries_impact: "Over 1,200 fishing boats damaged; fishing gear and storage godowns destroyed at Visakhapatnam Fishing Harbour.",
+    power_disruption: "Total metropolitan power grid collapse; power restoration took 7 to 14 days across Visakhapatnam city.",
+    communication_disruption: "Complete cellular tower failure across three districts; government resorted to VHF police wireless and satellite phones.",
+    government_response: "Chief Minister camped in bus at Collectorate; inter-state deployment of 10,000 power technicians; food distribution via mobile vans.",
+    lessons_learned: "Pioneered underground electrical power cabling for coastal cities, deployment of satellite communication at district headquarters, and crowdsourced mobile damage mapping.",
+    source_name: "IMD Report on Extremely Severe Cyclonic Storm Hudhud (2014) / World Bank Post-Disaster Needs Assessment",
+    source_url: "https://rsmcnewdelhi.imd.gov.in",
+    retrieved_at: "2026-09-28",
+    last_verified_at: "2026-09-28"
+  },
+  {
+    id: "AP-CYC-2018-TITLI",
+    cyclone_name: "Cyclone Titli (Very Severe Cyclonic Storm)",
+    year: 2018,
+    start_date: "2018-10-08",
+    end_date: "2018-10-12",
+    landfall_location: "Near Palasa, Srikakulam District",
+    affected_districts: ["Srikakulam", "Vizianagaram"],
+    maximum_wind_speed_kmh: 165,
+    rainfall_mm: "Extreme torrential rainfall: 300 mm to 430 mm in Srikakulam rural mandals",
+    storm_surge_meters: 1.5,
+    evacuated_population: 300000,
+    casualties: 8,
+    houses_damaged: 89000,
+    infrastructure_damage: "Vamsadhara and Nagavali rivers overflowed; thousands of power distribution poles snapped; road connectivity to 800 villages cut.",
+    agricultural_damage: "Devastation of the Uddanam horticulture belt: millions of coconut and cashew nut trees uprooted, destroying multi-generational rural livelihoods.",
+    fisheries_impact: "Bhavanapadu harbour boats damaged; coastal fishing equipment washed out by riverine backwaters.",
+    power_disruption: "Complete electrical blackout across Srikakulam district for 10-15 days.",
+    communication_disruption: "All private mobile telecom networks disabled; optical fibre links severed by fallen trees.",
+    government_response: "APSDMA automated weather stations triggered alerts; immediate financial relief packages for Uddanam cashew and coconut farmers.",
+    lessons_learned: "Established dedicated horticulture rehabilitation protocols and long-term crop insurance integration for cyclone-hit orchards.",
+    source_name: "APSDMA Post-Cyclone Titli Damage Assessment Report / IMD Bulletin",
+    source_url: "https://apsdma.ap.gov.in",
+    retrieved_at: "2026-09-28",
+    last_verified_at: "2026-09-28"
+  },
+  {
+    id: "AP-CYC-2018-PHETHAI",
+    cyclone_name: "Cyclone Phethai (Severe Cyclonic Storm)",
+    year: 2018,
+    start_date: "2018-12-13",
+    end_date: "2018-12-18",
+    landfall_location: "Near Katrenikona, East Godavari / Dr. B.R. Ambedkar Konaseema District",
+    affected_districts: ["Dr. B.R. Ambedkar Konaseema", "Kakinada", "East Godavari", "West Godavari", "Krishna"],
+    maximum_wind_speed_kmh: 100,
+    rainfall_mm: "160 mm to 240 mm recorded across Godavari delta",
+    storm_surge_meters: 1.0,
+    evacuated_population: 50000,
+    casualties: 1,
+    houses_damaged: 4500,
+    infrastructure_damage: "Localized flooding in delta creeks, uprooted trees, and blocked rural roads.",
+    agricultural_damage: "Severe crop damage as cyclone struck precisely during Kharif paddy harvest; unharvested grain sprouted on waterlogged fields.",
+    fisheries_impact: "Pre-emptive suspension of all artisanal fishing; crafts moved to Kakinada safe anchorages.",
+    power_disruption: "Temporary power cutoff in 14 coastal mandals to prevent electrocution.",
+    communication_disruption: "Minor mobile network latency; no complete blackout.",
+    government_response: "Use of real-time RTGS (Real Time Governance Society) dashboards to monitor rainfall and deploy drain-clearing machinery.",
+    lessons_learned: "Highlighted the vulnerability of winter-harvest crops to unseasonal December cyclones, requiring mechanized crop dryers.",
+    source_name: "IMD Severe Cyclonic Storm Phethai Report / APSDMA",
+    source_url: "https://apsdma.ap.gov.in",
+    retrieved_at: "2026-09-28",
+    last_verified_at: "2026-09-28"
+  },
+  {
+    id: "AP-CYC-2021-GULAB",
+    cyclone_name: "Cyclone Gulab (Cyclonic Storm)",
+    year: 2021,
+    start_date: "2021-09-24",
+    end_date: "2021-09-28",
+    landfall_location: "Near Kalingapatnam, Srikakulam District",
+    affected_districts: ["Srikakulam", "Vizianagaram", "Visakhapatnam"],
+    maximum_wind_speed_kmh: 95,
+    rainfall_mm: "Intense torrential rainfall: 150 mm to 280 mm in 24 hours",
+    storm_surge_meters: 0.8,
+    evacuated_population: 42000,
+    casualties: 2,
+    houses_damaged: 2100,
+    infrastructure_damage: "Flash flooding of local hill streams (Geddas), overflowing causeways and inundating railway tracks.",
+    agricultural_damage: "Paddy and maize crops submerged in low-lying mandals.",
+    fisheries_impact: "Two fishermen drowned at sea after venturing out in violation of warnings; fishing ban strictly enforced thereafter.",
+    power_disruption: "Power supply restored within 24 hours across primary urban centres.",
+    communication_disruption: "Localized cellular congestion during peak rainfall hours.",
+    government_response: "SDRF and NDRF teams pre-positioned in vulnerable mandals; relief camps activated with food and hot water.",
+    lessons_learned: "Reinforced the critical importance of enforcing maritime safety bans and monitoring tributary hill-stream flooding.",
+    source_name: "IMD Cyclone Gulab Report / Disaster Management Department, AP",
+    source_url: "https://rsmcnewdelhi.imd.gov.in",
+    retrieved_at: "2026-09-28",
+    last_verified_at: "2026-09-28"
+  }
+];

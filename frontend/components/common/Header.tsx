@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { GenieLink } from "@/genie/GenieLink";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Wifi,
@@ -12,17 +13,36 @@ import {
 } from "lucide-react";
 import { syncManager, type SyncState } from "@/lib/sync/syncManager";
 import { translations, type Language } from "@/lib/locales/translations";
-import { SpotlightNavbar } from "@/components/ui/spotlight-navbar";
 import { GooeySearch } from "@/components/ui/gooey-search";
 import { db, initializeDatabase } from "@/lib/db/dexie";
+import { cn } from "@/lib/utils";
 
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
+  const headerRef = useRef<HTMLElement>(null);
   const [lang, setLang] = useState<Language>("en");
   const [syncState, setSyncState] = useState<SyncState>("ONLINE");
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [isSimulatedOffline, setIsSimulatedOffline] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [animatingBtn, setAnimatingBtn] = useState<string | null>(null);
+  const [isQrGenerating, setIsQrGenerating] = useState(false);
+
+  useEffect(() => {
+    const handleQrState = (e: any) => {
+      setIsQrGenerating(Boolean(e.detail?.isGenerating));
+    };
+    window.addEventListener("qrGeneratingState", handleQrState);
+    return () => window.removeEventListener("qrGeneratingState", handleQrState);
+  }, []);
+
+  const triggerButtonWave = (id: string) => {
+    setAnimatingBtn(id);
+    setTimeout(() => {
+      setAnimatingBtn((prev) => (prev === id ? null : prev));
+    }, 750);
+  };
 
   useEffect(() => {
     initializeDatabase().catch(console.error);
@@ -35,7 +55,42 @@ export default function Header() {
       setPendingCount(count);
     });
 
-    return () => unsubscribe();
+    try {
+      if (sessionStorage.getItem("ashraysetu_flight_mode") === "1") {
+        setIsSimulatedOffline(true);
+        setSyncState("OFFLINE");
+      }
+    } catch {}
+
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.offsetHeight;
+        if (height > 0) {
+          document.documentElement.style.setProperty("--app-header-height", `${height}px`);
+        }
+      }
+    };
+
+    updateHeaderHeight();
+    window.addEventListener("resize", updateHeaderHeight);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && headerRef.current) {
+      observer = new ResizeObserver(() => updateHeaderHeight());
+      observer.observe(headerRef.current);
+    }
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", updateHeaderHeight);
+      observer?.disconnect();
+    };
   }, []);
 
   const toggleLanguage = () => {
@@ -52,6 +107,13 @@ export default function Header() {
   const toggleAirplaneMode = () => {
     const nextMode = !isSimulatedOffline;
     setIsSimulatedOffline(nextMode);
+    try {
+      sessionStorage.setItem("ashraysetu_flight_mode", nextMode ? "1" : "0");
+      window.dispatchEvent(
+        new CustomEvent("flightModeChanged", { detail: { enabled: nextMode } })
+      );
+    } catch {}
+
     if (nextMode) {
       setSyncState("OFFLINE");
     } else {
@@ -62,12 +124,13 @@ export default function Header() {
 
   // ── Navigation routes defined for navbar search ──
   const APP_NAV_ROUTES = [
-    { path: "/intake", label: "📋 Household Intake (/intake)", keywords: ["intake", "household", "triage", "family", "/intake"] },
+    { path: "/intake", label: "📋 Household Intake & QR Pass (/intake)", keywords: ["intake", "household", "triage", "family", "generate", "qr", "token", "pass", "printer", "/intake"] },
     { path: "/inventory", label: "📦 Shelter Stocks (/inventory)", keywords: ["inventory", "stock", "supplies", "ration", "water", "food", "/inventory"] },
     { path: "/scan", label: "📷 QR Pass Scanner (/scan)", keywords: ["scan", "qr", "pass", "camera", "token", "/scan"] },
     { path: "/map", label: "🗺️ Spatial GIS Map (/map)", keywords: ["map", "gis", "shelters", "spatial", "evacuation", "/map"] },
     { path: "/dashboard", label: "📊 Command Desk (/dashboard)", keywords: ["dashboard", "command", "desk", "deoc", "analytics", "/dashboard"] },
     { path: "/andhra-pradesh", label: "🌊 Andhra Pradesh Hub (/andhra-pradesh)", keywords: ["andhra", "pradesh", "ap", "visakhapatnam", "/andhra-pradesh"] },
+    { path: "/odisha", label: "🌪️ Odisha Hub (/odisha)", keywords: ["odisha", "hub", "kendrapara", "puri", "osdma", "/odisha"] },
     { path: "/admin/dashboard", label: "🛡️ Admin Live EOC (/admin/dashboard)", keywords: ["admin", "eoc", "portal", "live", "/admin/dashboard"] },
   ];
 
@@ -128,7 +191,7 @@ export default function Header() {
     window.dispatchEvent(new CustomEvent("ashraysetuSearchSelect", { detail: item }));
 
     // Match and route to clicked navigation destination
-    if (item.includes("/intake") || item.startsWith("👤") || item.toLowerCase().includes("intake")) {
+    if (item.includes("/intake") || item.startsWith("👤") || item.toLowerCase().includes("intake") || item.toLowerCase().includes("printer") || item.toLowerCase().includes("generate qr")) {
       router.push("/intake");
     } else if (item.includes("/inventory") || item.toLowerCase().includes("inventory") || item.toLowerCase().includes("stock")) {
       router.push("/inventory");
@@ -142,6 +205,8 @@ export default function Header() {
       router.push("/dashboard");
     } else if (item.includes("/andhra-pradesh") || item.toLowerCase().includes("andhra")) {
       router.push("/andhra-pradesh");
+    } else if (item.includes("/odisha") || item.toLowerCase().includes("odisha")) {
+      router.push("/odisha");
     }
   };
 
@@ -153,131 +218,167 @@ export default function Header() {
     return "తెలుగు";
   };
 
-  const navLinks = [
-    { href: "/intake", label: t.navIntake },
-    { href: "/inventory", label: t.navInventory },
-    { href: "/scan", label: t.navScan },
-    { href: "/map", label: t.navMap },
-    { href: "/dashboard", label: t.navDashboard },
-    { href: "/andhra-pradesh", label: t.navAP },
-    { href: "/admin/dashboard", label: "Admin Live EOC" },
-  ];
+
 
   return (
-    <header className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 text-white">
-      {/* Network Status Alert Banner */}
-      <div
-        className={`px-4 py-1.5 text-xs font-semibold flex items-center justify-between transition-colors ${
-          syncState === "OFFLINE" || isSimulatedOffline
-            ? "bg-amber-600 text-black"
-            : syncState === "SYNCING"
-            ? "bg-blue-600 text-white"
-            : "bg-emerald-700 text-white"
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          {syncState === "OFFLINE" || isSimulatedOffline ? (
-            <>
-              <WifiOff className="w-4 h-4 animate-pulse" />
-              <span>{t.offlineStatus}</span>
-            </>
-          ) : syncState === "SYNCING" ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>{t.syncingStatus}</span>
-            </>
-          ) : (
-            <>
-              <Wifi className="w-4 h-4" />
-              <span>{t.onlineStatus}</span>
-            </>
-          )}
-
-          {pendingCount > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 rounded bg-black/40 text-[10px] text-white">
-              {pendingCount} Queued
-            </span>
-          )}
-        </div>
-
-        {/* Demo Airplane Mode Toggle Button */}
-        <button
-          onClick={toggleAirplaneMode}
-          className="px-2 py-0.5 text-[11px] rounded bg-black/30 hover:bg-black/50 text-white border border-white/20 transition-all font-mono"
+    <header
+      ref={headerRef}
+      data-view-transition="app-shell"
+      className={cn(
+        "fixed top-0 left-0 right-0 w-full z-50 pointer-events-none transition-all duration-300 genie-app-shell",
+        isQrGenerating && "opacity-0 -translate-y-full pointer-events-none invisible"
+      )}
+      style={isQrGenerating ? { display: "none" } : undefined}
+    >
+      {/* Edge-to-Edge Floating Glass Bar (Consuming the same shared Liquid Glass Material) */}
+      <div className="pointer-events-auto w-full liquid-glass-material liquid-glass-top-navbar transition-all duration-300">
+        {/* Network Status Micro-Alert Ribbon - status tint over the shared Liquid Glass Material */}
+        <div
+          className={`w-full border-b transition-colors ${
+            syncState === "OFFLINE" || isSimulatedOffline
+              ? "bg-amber-500/10 text-amber-950 border-amber-500/20"
+              : syncState === "SYNCING"
+              ? "bg-sky-500/10 text-sky-950 border-sky-500/20"
+              : "bg-emerald-500/10 text-emerald-950 border-emerald-500/20"
+          }`}
         >
-          {isSimulatedOffline ? "✈️ Flight Mode: ON" : "✈️ Flight Mode: OFF"}
-        </button>
-      </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1 text-[11px] font-semibold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {syncState === "OFFLINE" || isSimulatedOffline ? (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                  <span>{t.offlineStatus}</span>
+                </>
+              ) : syncState === "SYNCING" ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                  <span>{t.syncingStatus}</span>
+                </>
+              ) : (
+                <>
+                  <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{t.onlineStatus}</span>
+                </>
+              )}
 
-      {/* Main App Bar */}
-      <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between relative z-30">
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <div className="w-9 h-9 rounded-lg bg-sky-600 flex items-center justify-center font-bold text-lg shadow-lg shadow-sky-600/30">
-            <ShieldCheck className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <div className="text-lg font-black tracking-tight leading-none text-sky-400">
-              {t.appTitle}
+              {pendingCount > 0 && (
+                <span className="ml-1.5 px-2 py-0.2 rounded-full bg-white/60 text-[10px] font-mono text-slate-700 border border-white/80 shadow-xs backdrop-blur-md">
+                  {pendingCount} Queued
+                </span>
+              )}
             </div>
-            <div className="text-[11px] text-slate-400 font-medium hidden sm:block">
-              {t.region}
-            </div>
+
+            {/* Flight Mode Toggle Button - Figma Liquid Glass Pill */}
+            <button
+              onClick={() => {
+                triggerButtonWave("flight");
+                toggleAirplaneMode();
+              }}
+              className={`px-3 py-1 text-[10px] rounded-full font-mono transition backdrop-blur-md active:scale-95 figma-ocean-wave-btn ${
+                animatingBtn === "flight" ? "figma-wave-animating" : ""
+              } ${
+                isSimulatedOffline
+                  ? "!bg-amber-500/25 !text-amber-950 border-amber-400"
+                  : "bg-white/70 hover:bg-white/90 text-slate-800 border-white/80"
+              }`}
+            >
+              <span className="figma-wave-capsule" aria-hidden="true">
+                <span className="figma-wave-meniscus" />
+              </span>
+              <span className="figma-wave-shockwave" aria-hidden="true" />
+              <span className="figma-wave-shockwave-2" aria-hidden="true" />
+              <span className="relative z-10">{isSimulatedOffline ? "✈️ Flight Mode: ON" : "✈️ Flight Mode: OFF"}</span>
+            </button>
           </div>
-        </Link>
+        </div>
 
-        <div className="flex items-center gap-2">
-          {/* Gooey Search on the left side of language change button */}
-          <GooeySearch
-            compact
-            onSearch={handleSearch}
-            placeholder={
-              lang === "or"
-                ? "ଖୋଜନ୍ତୁ..."
-                : lang === "te"
-                ? "శోధించండి..."
-                : "Search shelters, families..."
-            }
-            buttonLabel={
-              lang === "or"
-                ? "ଖୋଜ"
-                : lang === "te"
-                ? "వెతుకు"
-                : "Search"
-            }
-            maxResults={5}
-            debounceMs={300}
-            onSelect={handleResultSelect}
-          />
-
-          {/* Multi-Language Switcher (EN -> OR -> TE) */}
-          <button
-            onClick={toggleLanguage}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold border border-slate-700 transition shrink-0"
-            title="Click to switch language: English / ଓଡ଼ିଆ / తెలుగు"
-          >
-            <Globe className="w-3.5 h-3.5 text-sky-400" />
-            <span>{getLanguageLabel()}</span>
-          </button>
-
-          {/* Secure Admin Portal Link */}
-          <Link
-            href="/admin/dashboard"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-700/60 text-red-200 text-xs font-bold transition shadow-sm shrink-0"
-            title="Secure Emergency Operation Center Admin Dashboard"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-red-400" />
-            <span className="hidden sm:inline">Admin EOC</span>
-            <span className="sm:hidden">EOC</span>
+        {/* Main App Bar Controls Row */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3 relative z-20">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#007AFF] to-[#0055B3] flex items-center justify-center font-bold text-sm shadow-[0_2px_10px_rgba(0,122,255,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-white/40 group-hover:scale-105 transition-transform">
+              <ShieldCheck className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <div className="text-base sm:text-lg font-black tracking-tight leading-none text-slate-900">
+                {t.appTitle}
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium hidden sm:block">
+                {t.region}
+              </div>
+            </div>
           </Link>
-        </div>
-      </div>
 
-      {/* Sub-Navigation with Spotlight Effect */}
-      <nav className="border-t border-slate-800/80 bg-slate-950/70 overflow-x-auto relative z-10">
-        <div className="max-w-7xl mx-auto px-3 py-1 flex items-center">
-          <SpotlightNavbar />
+          <div className="flex items-center gap-2">
+            {/* Morphing Gooey Search - Dark Blue & Shifted 15mm Left */}
+            <div className="mr-[15mm]" style={{ marginRight: "15mm" }}>
+              <GooeySearch
+                compact
+                onSearch={handleSearch}
+                placeholder={
+                  lang === "or"
+                    ? "ଖୋଜନ୍ତୁ..."
+                    : lang === "te"
+                    ? "శోధించండి..."
+                    : "Search shelters, families..."
+                }
+                buttonLabel={
+                  lang === "or"
+                    ? "ଖୋଜ"
+                    : lang === "te"
+                    ? "వెతుକୁ"
+                    : "Search"
+                }
+                maxResults={5}
+                debounceMs={300}
+                onSelect={handleResultSelect}
+              />
+            </div>
+
+            {/* Multi-Language Switcher - Figma Liquid Glass Capsule */}
+            <button
+              onClick={() => {
+                triggerButtonWave("lang");
+                toggleLanguage();
+              }}
+              className={`px-3 py-1.5 text-xs font-semibold text-slate-800 hover:text-slate-950 border border-white/80 rounded-full transition-all shrink-0 flex items-center gap-1.5 active:scale-95 cursor-pointer figma-ocean-wave-btn ${
+                animatingBtn === "lang" ? "figma-wave-animating" : ""
+              }`}
+              title="Click to switch language: English / ଓଡ଼ିଆ / తెలుగు"
+            >
+              <span className="figma-wave-capsule" aria-hidden="true">
+                <span className="figma-wave-meniscus" />
+              </span>
+              <span className="figma-wave-shockwave" aria-hidden="true" />
+              <span className="figma-wave-shockwave-2" aria-hidden="true" />
+              <Globe className="w-3.5 h-3.5 text-[#007AFF] relative z-10" />
+              <span className="hidden sm:inline relative z-10">{getLanguageLabel()}</span>
+            </button>
+
+            {/* Secure Admin Portal Link - Figma Liquid Glass Accent Pill */}
+            <GenieLink
+              href="/admin/dashboard"
+              data-genie-origin="/admin/dashboard"
+              onClick={() => triggerButtonWave("admin")}
+              className={`px-3 py-1.5 text-rose-700 hover:text-rose-800 border border-rose-300/40 text-xs font-bold rounded-full transition-all shrink-0 flex items-center gap-1.5 active:scale-95 figma-ocean-wave-btn ${
+                animatingBtn === "admin" ? "figma-wave-animating" : ""
+              }`}
+              title="Secure Emergency Operation Center Admin Dashboard"
+            >
+              <span className="figma-wave-capsule" aria-hidden="true">
+                <span className="figma-wave-meniscus" />
+              </span>
+              <span className="figma-wave-shockwave" aria-hidden="true" />
+              <span className="figma-wave-shockwave-2" aria-hidden="true" />
+              <ShieldCheck className="w-3.5 h-3.5 text-rose-600 relative z-10" />
+              <span className="hidden sm:inline relative z-10">Admin Live</span>
+              <span className="sm:hidden relative z-10">Admin</span>
+            </GenieLink>
+          </div>
         </div>
-      </nav>
+
+
+      </div>
     </header>
   );
 }
+

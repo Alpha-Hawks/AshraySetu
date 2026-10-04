@@ -114,24 +114,15 @@ import { generateCircularQRDataURL } from "./circularCode";
 export { generateCircularQRDataURL };
 
 /**
- * Generates the circular QR code Data URL from the encoded payload
+ * Generates pure square QR code Data URL without circular badges or frames
  */
 export async function generateQRCodeDataURL(payload: string): Promise<string> {
-  try {
-    if (typeof document !== "undefined") {
-      const circularUrl = await generateCircularQRDataURL(payload, 380);
-      if (circularUrl) return circularUrl;
-    }
-  } catch (err) {
-    console.warn("Circular QR generation fallback:", err);
-  }
-
   return await QRCode.toDataURL(payload, {
     errorCorrectionLevel: "M",
-    margin: 2,
-    scale: 6,
+    margin: 1,
+    scale: 10,
     color: {
-      dark: "#0F172A",
+      dark: "#000000",
       light: "#FFFFFF",
     },
   });

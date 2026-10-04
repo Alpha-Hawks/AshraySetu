@@ -22,9 +22,9 @@ import {
   AlertCircle,
   Sparkles,
   Lock,
-  ImageIcon,
   CheckCircle2,
   Check,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Html5Qrcode,
@@ -45,6 +45,8 @@ import {
   type ShelterAdmission,
 } from "@/lib/db/dexie";
 import { translations, type Language } from "@/lib/locales/translations";
+import { useMacWindow } from "@/lib/window/MacWindowManager";
+import { cn } from "@/lib/utils";
 
 /**
 /**
@@ -187,6 +189,7 @@ export interface ScanAuditRecord {
 }
 
 export default function ScanPage() {
+  const { openWindow } = useMacWindow();
   const [lang, setLang] = useState<Language>("en");
   const [shelters, setShelters] = useState<Shelter[]>([]);
   const [selectedShelterId, setSelectedShelterId] = useState<string>("");
@@ -197,7 +200,32 @@ export default function ScanPage() {
   const [existingAdmission, setExistingAdmission] = useState<ShelterAdmission | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isAdmitted, setIsAdmitted] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<"scanner" | "muster">("scanner");
+  const [isDuplicateScan, setIsDuplicateScan] = useState<boolean>(false);
+  const [duplicateNotice, setDuplicateNotice] = useState<{
+    firstAdmittedAt: number;
+    shelterId: string;
+    shelterName: string;
+    scanCount: number;
+    preventedMembers: number;
+    preventedWater: number;
+    preventedFood: number;
+  } | null>(null);
+  const [activeTab, setActiveTab] = useState<"scanner" | "muster" | "printer">("scanner");
+
+  // Automatic Shelter Stock Upgrade Notice State
+  const [autoUpgradedStockNotice, setAutoUpgradedStockNotice] = useState<{
+    shelterId: string;
+    shelterName: string;
+    addedMembers: number;
+    prevOccupancy: number;
+    newOccupancy: number;
+    capacityPersons: number;
+    rationWater: number;
+    rationFood: number;
+    rationFormula: number;
+    rationOrs: number;
+    timestamp: number;
+  } | null>(null);
 
   // Authoritative QR Timing & Arrival Audit State
   const [scanAuditRecord, setScanAuditRecord] = useState<ScanAuditRecord | null>(null);
@@ -407,6 +435,19 @@ export default function ScanPage() {
     }
 
     restoreFromBackendOrStorage();
+
+    // Support URL ?code= or ?token= to immediately auto-process test pass
+    try {
+      if (typeof window !== "undefined") {
+        const search = new URLSearchParams(window.location.search);
+        const codeQuery = search.get("code") || search.get("token");
+        if (codeQuery && codeQuery.includes("|")) {
+          setTimeout(() => {
+            handleProcessCode(codeQuery);
+          }, 400);
+        }
+      }
+    } catch { }
   }, [detectedTimeZone, timeZoneShort]);
 
   // Synchronize Live Gate Clock & Running Elapsed Arrival Timer
@@ -517,6 +558,30 @@ export default function ScanPage() {
     }
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate([100, 50, 100]);
+    }
+  };
+
+  // Warning Sound & Haptic Vibration for Duplicate Scans
+  const playWarningBeep = () => {
+    try {
+      const ctx = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(340, ctx.currentTime);
+      osc.frequency.setValueAtTime(220, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch {
+      // AudioContext unavailable
+    }
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate([250, 100, 250]);
     }
   };
 
@@ -693,6 +758,18 @@ export default function ScanPage() {
   const startCamera = async () => {
     setCameraError(null);
     setIsCameraLoading(true);
+
+    // Defer camera startup until genie transition finishes so permission prompts and video startup don't stutter
+    if (typeof window !== "undefined" && (window as any).__genieTransitionRunning) {
+      await new Promise<void>((resolve) => {
+        const onFinished = () => {
+          window.removeEventListener("genie-transition-finished", onFinished);
+          resolve();
+        };
+        window.addEventListener("genie-transition-finished", onFinished, { once: true });
+        setTimeout(resolve, 600);
+      });
+    }
 
     try {
       await stopCamera();
@@ -1178,33 +1255,341 @@ export default function ScanPage() {
       );
       setMatchedHousehold(household || null);
 
+      let resolvedTriage: EvacueeTriage | null = null;
       if (household) {
         const triage = await db.triage
           .where("household_id")
           .equals(household.id)
           .first();
-        setMatchedTriage(triage || null);
+        resolvedTriage = triage || null;
       } else {
         const triage = await db.triage
           .where("id")
           .equals(`triage-${decoded.shortRef}`)
           .first();
-        setMatchedTriage(triage || null);
+        resolvedTriage = triage || null;
       }
+      setMatchedTriage(resolvedTriage);
 
-      // Check if already admitted to this shelter - strictly by unique household_token
-      const existing = await db.admissions
-        .where("shelter_id")
-        .equals(selectedShelterId)
-        .and((adm) => adm.household_token === decoded.shortRef)
-        .first();
+      const targetShelterId =
+        selectedShelterId ||
+        decoded.shelterId ||
+        (shelters.length > 0 ? shelters[0].id : "OD-KEN-RAJ-001");
+
+      // STRICT IDEMPOTENCY CHECK: Search across ALL shelters in Dexie admissions
+      const allAdmissions = await db.admissions.toArray();
+      const existing = allAdmissions.find((adm) => {
+        if (!adm) return false;
+        const matchToken = adm.household_token && (
+          adm.household_token.toLowerCase() === decoded.shortRef.toLowerCase() ||
+          adm.household_token.toLowerCase() === codeText.trim().toLowerCase()
+        );
+        const matchName = decoded.headName && adm.head_name && (
+          adm.head_name.trim().toLowerCase() === decoded.headName.trim().toLowerCase() &&
+          (!adm.hamlet_name || !decoded.hamletName || adm.hamlet_name.trim().toLowerCase() === decoded.hamletName.trim().toLowerCase())
+        );
+        return Boolean(matchToken || matchName);
+      });
+
+      const isHouseholdArrived = Boolean(
+        household && (
+          household.status === "REACHED_SHELTER" ||
+          Boolean(household.qr_scanned_at)
+        )
+      );
+
+      const isDuplicate = Boolean(
+        existing ||
+        isHouseholdArrived ||
+        backendScan?.duplicate ||
+        (backendScan?.scan_count && backendScan.scan_count > 1)
+      );
 
       setExistingAdmission(existing || null);
-      if (existing) {
+
+      if (isDuplicate) {
         setIsAdmitted(true);
+        setIsDuplicateScan(true);
+
+        const admittedShelterId = existing?.shelter_id || household?.shelter_id || targetShelterId;
+        const admittedShelter = shelters.find((s) => s.id === admittedShelterId);
+        const firstTime =
+          existing?.admitted_at ||
+          household?.qr_scanned_at ||
+          backendScan?.first_scanned_at ||
+          authoritativeScannedAt;
+
+        const effectiveScanCount =
+          backendScan?.scan_count ||
+          (audit.scan_count && audit.scan_count > 1 ? audit.scan_count : (existing ? 2 : 1));
+
+        setDuplicateNotice({
+          firstAdmittedAt: firstTime,
+          shelterId: admittedShelterId,
+          shelterName: admittedShelter?.name || currentShelter?.name || "Official Cyclone Shelter",
+          scanCount: effectiveScanCount,
+          preventedMembers: decoded.totalMembers,
+          preventedWater: Number((decoded.totalMembers * 3.0).toFixed(1)),
+          preventedFood: decoded.totalMembers * 2,
+        });
+
+        // Update audit record to reflect duplicate scan status
+        const updatedAudit: ScanAuditRecord = {
+          ...audit,
+          duplicate: true,
+          scan_count: effectiveScanCount,
+        };
+        setScanAuditRecord(updatedAudit);
+
+        // Audible gatekeeper warning alert for duplicate scan
+        playWarningBeep();
+      } else {
+        setIsDuplicateScan(false);
+        setDuplicateNotice(null);
+
+        // AUTOMATICALLY UPGRADE SHELTER STOCKS ON FIRST SCAN ONLY!
+        await executeShelterStockUpgrade(
+          decoded,
+          audit,
+          targetShelterId,
+          household || null,
+          resolvedTriage
+        );
       }
+
+      // Smooth scroll to intake dossier & stock upgrade confirmation card
+      setTimeout(() => {
+        const el = document.getElementById("intake-dossier-card");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          const scrollContainer = document.querySelector('div[role="dialog"] .overflow-y-auto') as HTMLElement | null;
+          if (scrollContainer) {
+            const relTop = el.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top;
+            scrollContainer.scrollBy({
+              top: relTop - 20,
+              behavior: "smooth",
+            });
+          }
+        }
+      }, 150);
     } catch (err) {
-      console.error("Dexie lookup error:", err);
+      console.error("Dexie lookup / stock upgrade error:", err);
+    }
+  };
+
+  // Automated Shelter Stocks Upgrade Engine
+  const executeShelterStockUpgrade = async (
+    decodedPass: QRPayloadData,
+    auditRecord: ScanAuditRecord | null,
+    shelterId: string,
+    household: Household | null,
+    triage: EvacueeTriage | null
+  ) => {
+    try {
+      // 0. STRICT IDEMPOTENCY LOCK: Never double-count or re-upgrade stocks for an already admitted pass
+      const allAdmissions = await db.admissions.toArray();
+      const priorAdmission = allAdmissions.find((adm) => {
+        if (!adm) return false;
+        const matchToken = adm.household_token && (
+          adm.household_token.toLowerCase() === decodedPass.shortRef.toLowerCase()
+        );
+        const matchName = decodedPass.headName && adm.head_name && (
+          adm.head_name.trim().toLowerCase() === decodedPass.headName.trim().toLowerCase() &&
+          (!adm.hamlet_name || !decodedPass.hamletName || adm.hamlet_name.trim().toLowerCase() === decodedPass.hamletName.trim().toLowerCase())
+        );
+        return Boolean(matchToken || matchName);
+      });
+
+      if (priorAdmission) {
+        console.warn(`[IDEMPOTENCY SAFEGUARD] Household ${decodedPass.shortRef} was ALREADY admitted at shelter ${priorAdmission.shelter_id}. Aborting duplicate stock/occupancy addition.`);
+        setExistingAdmission(priorAdmission);
+        setIsAdmitted(true);
+        setIsDuplicateScan(true);
+        return priorAdmission;
+      }
+
+      const allShelters = await db.shelters.toArray();
+      const targetShelter =
+        (shelterId ? allShelters.find((s) => s.id === shelterId) : null) ||
+        (decodedPass.shelterId ? allShelters.find((s) => s.id === decodedPass.shelterId) : null) ||
+        currentShelter ||
+        allShelters[0] ||
+        null;
+
+      if (!targetShelter) {
+        console.warn("No target shelter resolved for stock upgrade");
+        return null;
+      }
+
+      const activeShelterId = targetShelter.id;
+      if (!selectedShelterId || selectedShelterId !== activeShelterId) {
+        setSelectedShelterId(activeShelterId);
+      }
+
+      const prevOccupancy = targetShelter.current_occupancy;
+      const newOccupancy = prevOccupancy + decodedPass.totalMembers;
+
+      // 1. Upgrade Shelter Muster Occupancy
+      await db.shelters.update(activeShelterId, {
+        current_occupancy: newOccupancy,
+        status: newOccupancy >= targetShelter.capacity_persons ? "SATURATED" : targetShelter.status,
+      });
+
+      // 2. Compute Triage & Clinical Category
+      let triageCategory = "P3_STANDARD";
+      if (decodedPass.triageCode.startsWith("P1")) triageCategory = "P1_CRITICAL";
+      else if (decodedPass.triageCode.startsWith("P2")) triageCategory = "P2_URGENT";
+
+      const admissionTime = auditRecord?.qr_scanned_at || Date.now();
+      const qrCreatedAt =
+        auditRecord?.qr_created_at ||
+        decodedPass.createdAt ||
+        (admissionTime - (7 * 60 + 35) * 1000);
+      const arrivalDuration =
+        auditRecord?.arrival_duration_seconds != null
+          ? auditRecord.arrival_duration_seconds
+          : Math.max(0, Math.floor((admissionTime - qrCreatedAt) / 1000));
+
+      // 3. Sphere Humanitarian Standards Ration Calculations
+      const rationWater = Number((decodedPass.totalMembers * 3.0).toFixed(1)); // 3L/person/day
+      const rationFood = decodedPass.totalMembers * 2; // 2 meals/person/day
+      const rationFormula = (decodedPass.infantCount || 0) * 1;
+      const rationOrs = Math.max(0, (decodedPass.elderlyCount || 0) * 2);
+
+      // 4. Upgrade / Deduct Stocks in db.inventory
+      // Water
+      const waterItem = await db.inventory.get(`${shelterId}_WATER_LITRES`);
+      if (waterItem) {
+        const updatedWater = Math.max(0, Math.round((waterItem.quantity_available - rationWater) * 10) / 10);
+        await db.inventory.update(waterItem.id, {
+          quantity_available: updatedWater,
+          daily_burn_rate: Number((newOccupancy * 3.0).toFixed(1)),
+          last_updated: admissionTime,
+        });
+      }
+
+      // Food Packets
+      const foodItem = await db.inventory.get(`${shelterId}_FOOD_PACKETS`);
+      if (foodItem) {
+        const updatedFood = Math.max(0, foodItem.quantity_available - rationFood);
+        await db.inventory.update(foodItem.id, {
+          quantity_available: updatedFood,
+          daily_burn_rate: newOccupancy * 2.0,
+          last_updated: admissionTime,
+        });
+      }
+
+      // Baby Formula
+      if (rationFormula > 0) {
+        const formulaItem = await db.inventory.get(`${shelterId}_BABY_FORMULA`);
+        if (formulaItem) {
+          const updatedFormula = Math.max(0, formulaItem.quantity_available - rationFormula);
+          await db.inventory.update(formulaItem.id, {
+            quantity_available: updatedFormula,
+            last_updated: admissionTime,
+          });
+        }
+      }
+
+      // ORS Sachets
+      if (rationOrs > 0) {
+        const orsItem = await db.inventory.get(`${shelterId}_ORS_SACHETS`);
+        if (orsItem) {
+          const updatedOrs = Math.max(0, orsItem.quantity_available - rationOrs);
+          await db.inventory.update(orsItem.id, {
+            quantity_available: updatedOrs,
+            last_updated: admissionTime,
+          });
+        }
+      }
+
+      // 5. Create Shelter Admission Record
+      const admissionRecord: ShelterAdmission = {
+        id: crypto.randomUUID(),
+        shelter_id: shelterId,
+        household_token: decodedPass.shortRef,
+        head_name: decodedPass.headName || "Unknown Head",
+        hamlet_name: decodedPass.hamletName || "Coastal Hamlet",
+        ward_number: household?.ward_number || 1,
+        total_members: decodedPass.totalMembers,
+        male_count: decodedPass.maleCount,
+        female_count: decodedPass.femaleCount,
+        child_under_five_count: decodedPass.infantCount,
+        elderly_above_sixty_count: decodedPass.elderlyCount,
+        livestock_count: decodedPass.livestockCount,
+        triage_code: decodedPass.triageCode,
+        triage_level: triage?.triage_level || triageCategory,
+        admitted_at: admissionTime,
+        qr_created_at: qrCreatedAt,
+        qr_scanned_at: admissionTime,
+        arrival_duration_seconds: arrivalDuration,
+        status: "REACHED_SHELTER",
+        clinical_notes:
+          triage?.notes ||
+          (decodedPass.triageCode.includes("PREG")
+            ? "Maternity Care: Third trimester pregnancy triage flagged."
+            : decodedPass.triageCode.includes("BED")
+              ? "Geriatric/Mobility: Bedridden patient requiring ground floor cot."
+              : decodedPass.triageCode.includes("CHRONIC")
+                ? "Chronic Medication: Insulin/dialysis maintenance flagged."
+                : undefined),
+        ration_water_litres: rationWater,
+        ration_food_packets: rationFood,
+      };
+
+      await db.admissions.add(admissionRecord);
+
+      // 6. Update Household record
+      if (household) {
+        await db.households.update(household.id, {
+          qr_scanned_at: admissionTime,
+          arrival_duration_seconds: arrivalDuration,
+          status: "REACHED_SHELTER",
+        });
+      }
+
+      // 7. Trigger Cross-Window Event & LocalStorage Persistence
+      const notice = {
+        shelterId: targetShelter.id,
+        shelterName: targetShelter.name,
+        shortRef: decodedPass.shortRef,
+        headName: decodedPass.headName,
+        hamletName: decodedPass.hamletName,
+        addedMembers: decodedPass.totalMembers,
+        prevOccupancy,
+        newOccupancy,
+        capacityPersons: targetShelter.capacity_persons,
+        rationWater,
+        rationFood,
+        rationFormula,
+        rationOrs,
+        timestamp: admissionTime,
+      };
+
+      window.dispatchEvent(
+        new CustomEvent("ashraysetu_inventory_updated", { detail: notice })
+      );
+
+      try {
+        localStorage.setItem(
+          "ashraysetu_last_inventory_upgrade",
+          JSON.stringify(notice)
+        );
+      } catch { }
+
+      setAutoUpgradedStockNotice(notice);
+      setExistingAdmission(admissionRecord);
+      setIsAdmitted(true);
+      setIsDuplicateScan(false);
+      setDuplicateNotice(null);
+
+      await refreshData();
+      await loadAdmissions(shelterId);
+
+      return admissionRecord;
+    } catch (err) {
+      console.error("Auto upgrade shelter stocks error:", err);
+      return null;
     }
   };
 
@@ -1216,6 +1601,9 @@ export default function ScanPage() {
     setMatchedTriage(null);
     setExistingAdmission(null);
     setIsAdmitted(false);
+    setIsDuplicateScan(false);
+    setDuplicateNotice(null);
+    setAutoUpgradedStockNotice(null);
     setScannedAtTimestamp(null);
     setScanAuditRecord(null);
     setElapsedTimerSeconds(0);
@@ -1259,93 +1647,28 @@ export default function ScanPage() {
     }
   };
 
-  // Confirm Admission & Increment Shelter Headcount
+  // Confirm Admission & Increment Shelter Headcount (Fallback manual action)
   const handleConfirmAdmission = async () => {
     if (!scannedResult || !currentShelter) return;
-
-    try {
-      const newOccupancy =
-        currentShelter.current_occupancy + scannedResult.totalMembers;
-      await db.shelters.update(selectedShelterId, {
-        current_occupancy: newOccupancy,
-      });
-
-      let triageCategory = "P3_STANDARD";
-      if (scannedResult.triageCode.startsWith("P1"))
-        triageCategory = "P1_CRITICAL";
-      else if (scannedResult.triageCode.startsWith("P2"))
-        triageCategory = "P2_URGENT";
-
-      const admissionTime = scannedAtTimestamp || Date.now();
-      const qrCreatedAt =
-        scanAuditRecord?.qr_created_at ||
-        scannedResult.createdAt ||
-        (admissionTime - (7 * 60 + 35) * 1000);
-      const arrivalDuration =
-        scanAuditRecord?.arrival_duration_seconds != null
-          ? scanAuditRecord.arrival_duration_seconds
-          : Math.max(0, Math.floor((admissionTime - qrCreatedAt) / 1000));
-
-      const admissionRecord: ShelterAdmission = {
-        id: crypto.randomUUID(),
-        shelter_id: selectedShelterId,
-        household_token: scannedResult.shortRef,
-        head_name: scannedResult.headName || "Unknown Head",
-        hamlet_name: scannedResult.hamletName || "Coastal Hamlet",
-        ward_number: matchedHousehold?.ward_number || 1,
-        total_members: scannedResult.totalMembers,
-        male_count: scannedResult.maleCount,
-        female_count: scannedResult.femaleCount,
-        child_under_five_count: scannedResult.infantCount,
-        elderly_above_sixty_count: scannedResult.elderlyCount,
-        livestock_count: scannedResult.livestockCount,
-        triage_code: scannedResult.triageCode,
-        triage_level: matchedTriage?.triage_level || triageCategory,
-        admitted_at: admissionTime,
-        qr_created_at: qrCreatedAt,
-        qr_scanned_at: admissionTime,
-        arrival_duration_seconds: arrivalDuration,
-        status: "REACHED_SHELTER",
-        clinical_notes:
-          matchedTriage?.notes ||
-          (scannedResult.triageCode.includes("PREG")
-            ? "Maternity Care: Third trimester pregnancy triage flagged."
-            : scannedResult.triageCode.includes("BED")
-              ? "Geriatric/Mobility: Bedridden patient requiring ground floor cot."
-              : scannedResult.triageCode.includes("CHRONIC")
-                ? "Chronic Medication: Insulin/dialysis maintenance flagged."
-                : undefined),
-        ration_water_litres: scannedResult.totalMembers * 3.0,
-        ration_food_packets: scannedResult.totalMembers * 2,
-      };
-
-      await db.admissions.add(admissionRecord);
-
-      if (matchedHousehold) {
-        await db.households.update(matchedHousehold.id, {
-          qr_scanned_at: admissionTime,
-          arrival_duration_seconds: arrivalDuration,
-          status: "REACHED_SHELTER",
-        });
-      }
-
-      await refreshData();
-      await loadAdmissions(selectedShelterId);
-
-      setExistingAdmission(admissionRecord);
-      setIsAdmitted(true);
-      playScanBeep();
-    } catch (err) {
-      console.error("Admission error:", err);
-      alert("Failed to record shelter admission. Please retry.");
+    if (isAdmitted || isDuplicateScan || existingAdmission) {
+      alert("This evacuee pass is already admitted to safe shelter. Re-admission is blocked to prevent double-counting headcount and rations.");
+      return;
     }
+    await executeShelterStockUpgrade(
+      scannedResult,
+      scanAuditRecord,
+      selectedShelterId,
+      matchedHousehold,
+      matchedTriage
+    );
+    playScanBeep();
   };
 
-  // Revert / Undo Admission
+  // Revert / Undo Admission & Restore Shelter Stocks
   const handleUndoAdmission = async (admissionId: string) => {
     if (
       !confirm(
-        "Are you sure you want to revert this admission and deduct the headcount from the shelter muster?"
+        "Are you sure you want to revert this admission and restore the allocated stocks to the shelter inventory?"
       )
     ) {
       return;
@@ -1361,14 +1684,69 @@ export default function ScanPage() {
         await db.shelters.update(selectedShelterId, {
           current_occupancy: revisedOccupancy,
         });
+
+        // Restore inventory commodities
+        const waterRation = record.ration_water_litres || record.total_members * 3.0;
+        const foodRation = record.ration_food_packets || record.total_members * 2;
+
+        const waterItem = await db.inventory.get(`${selectedShelterId}_WATER_LITRES`);
+        if (waterItem) {
+          await db.inventory.update(waterItem.id, {
+            quantity_available: Number((waterItem.quantity_available + waterRation).toFixed(1)),
+            daily_burn_rate: Number((revisedOccupancy * 3.0).toFixed(1)),
+            last_updated: Date.now(),
+          });
+        }
+
+        const foodItem = await db.inventory.get(`${selectedShelterId}_FOOD_PACKETS`);
+        if (foodItem) {
+          await db.inventory.update(foodItem.id, {
+            quantity_available: foodItem.quantity_available + foodRation,
+            daily_burn_rate: revisedOccupancy * 2.0,
+            last_updated: Date.now(),
+          });
+        }
+
         await db.admissions.delete(admissionId);
+
+        // Broadcast revert event
+        const revertNotice = {
+          shelterId: selectedShelterId,
+          shelterName: currentShelter.name,
+          shortRef: record.household_token,
+          headName: record.head_name,
+          addedMembers: -record.total_members,
+          prevOccupancy: currentShelter.current_occupancy,
+          newOccupancy: revisedOccupancy,
+          capacityPersons: currentShelter.capacity_persons,
+          rationWater: -waterRation,
+          rationFood: -foodRation,
+          rationFormula: 0,
+          rationOrs: 0,
+          timestamp: Date.now(),
+          isRevert: true,
+        };
+
+        window.dispatchEvent(
+          new CustomEvent("ashraysetu_inventory_updated", { detail: revertNotice })
+        );
+
+        try {
+          localStorage.setItem(
+            "ashraysetu_last_inventory_upgrade",
+            JSON.stringify(revertNotice)
+          );
+        } catch { }
 
         await refreshData();
         await loadAdmissions(selectedShelterId);
 
         if (scannedResult && scannedResult.shortRef === record.household_token) {
           setIsAdmitted(false);
+          setIsDuplicateScan(false);
+          setDuplicateNotice(null);
           setExistingAdmission(null);
+          setAutoUpgradedStockNotice(null);
         }
       }
     } catch (err) {
@@ -1425,44 +1803,50 @@ export default function ScanPage() {
       <div id="qr-hidden-file-sink" className="hidden" />
 
       {/* TOP BANNER: SHELTER SELECTION, TIMEZONE CLOCK & CAPACITY */}
-      <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl space-y-4">
+      <div className="p-6 sm:p-7 rounded-[40px] glass-header-panel space-y-5 relative overflow-hidden">
         {/* Header & Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shadow-inner">
-              <QrCode className="w-6 h-6" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-13 h-13 rounded-2xl glass-l3 text-[#007AFF] border border-white/60 flex items-center justify-center shadow-xs shrink-0">
+              <QrCode className="w-6 h-6 stroke-[2.2]" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight flex items-center gap-2">
                 <span>{t.scanTitle}</span>
-                <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="px-2.5 py-0.5 text-[10px] font-mono font-bold rounded-full glass-l1 bg-emerald-500/20 text-emerald-900 border border-emerald-400/60">
                   OFFLINE MUSTER
                 </span>
               </h1>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600 font-semibold mt-0.5">
                 Optical QR Scanner • Real-time Headcount Admission Ledger
               </p>
             </div>
           </div>
 
           {/* View Tab Selector */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <div className="flex items-center gap-1.5 p-1.5 rounded-full glass-l1 border border-white/50 shadow-inner self-start sm:self-auto">
             <button
+              type="button"
               onClick={() => setActiveTab("scanner")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeTab === "scanner"
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
-                  : "text-slate-400 hover:text-white"
-                }`}
+              className={cn(
+                "px-4 py-2 rounded-full text-xs font-bold transition-all duration-250 select-none cursor-pointer border flex items-center gap-2",
+                activeTab === "scanner"
+                  ? "glass-pill-tab-all-active"
+                  : "text-slate-700 hover:text-slate-950 hover:bg-white/40 border-transparent"
+              )}
             >
               <Camera className="w-3.5 h-3.5" />
               <span>Camera Scanner</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("muster")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeTab === "muster"
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
-                  : "text-slate-400 hover:text-white"
-                }`}
+              className={cn(
+                "px-4 py-2 rounded-full text-xs font-bold transition-all duration-250 select-none cursor-pointer border flex items-center gap-2",
+                activeTab === "muster"
+                  ? "glass-pill-tab-all-active"
+                  : "text-slate-700 hover:text-slate-950 hover:bg-white/40 border-transparent"
+              )}
             >
               <Users className="w-3.5 h-3.5" />
               <span>Who Entered ({admissions.length})</span>
@@ -1471,37 +1855,41 @@ export default function ScanPage() {
         </div>
 
         {/* Dynamic System Timezone & Accurate Scan Time Lock Bar with Live/Frozen Arrival Timer */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs shadow-md">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl glass-l1 border border-white/60 text-xs shadow-inner relative z-10 text-slate-800">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 text-slate-300">
+            <div className="flex items-center gap-2">
               {isClockRunning ? (
-                <Clock className="w-4 h-4 text-emerald-400 animate-pulse shrink-0" />
+                <Clock className="w-4 h-4 text-emerald-600 animate-pulse shrink-0" />
               ) : (
-                <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
               )}
-              <span className="font-semibold text-slate-400">
+              <span className="font-semibold text-slate-600">
                 {isClockRunning
                   ? "Live Shelter Gate Clock:"
                   : "Scan Time (Locked & Frozen):"}
               </span>
               <span
-                className={`font-mono font-bold ${isClockRunning ? "text-emerald-300" : "text-amber-300"
-                  }`}
+                className={cn(
+                  "font-mono font-black",
+                  isClockRunning ? "text-emerald-800" : "text-amber-800"
+                )}
               >
                 {currentClockDisplay || "Detecting time..."}
               </span>
             </div>
 
             {/* LIVE / FROZEN ARRIVAL DURATION TIMER */}
-            <div className="flex items-center gap-2 pl-3 border-l border-slate-800">
-              <span className="font-semibold text-slate-400">
+            <div className="flex items-center gap-2 pl-3 border-l border-white/40">
+              <span className="font-semibold text-slate-600">
                 {isClockRunning ? "Transit Timer:" : "Time Taken to Reach:"}
               </span>
               <span
-                className={`font-mono font-extrabold text-xs px-2.5 py-0.5 rounded-lg border ${isClockRunning
-                    ? "bg-sky-950/80 text-sky-300 border-sky-500/40 animate-pulse"
-                    : "bg-emerald-950/90 text-emerald-300 border-emerald-500/40"
-                  }`}
+                className={cn(
+                  "font-mono font-extrabold text-xs px-2.5 py-0.5 rounded-lg border",
+                  isClockRunning
+                    ? "glass-l1 bg-sky-500/20 text-sky-900 border-sky-400/60 animate-pulse"
+                    : "glass-l1 bg-emerald-500/20 text-emerald-900 border-emerald-400/60"
+                )}
               >
                 {scanAuditRecord
                   ? formatDuration(scanAuditRecord.arrival_duration_seconds)
@@ -1512,42 +1900,42 @@ export default function ScanPage() {
 
           <div className="flex items-center gap-2">
             {isClockRunning ? (
-              <span className="flex items-center gap-1.5 text-[10px] font-mono bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-full text-emerald-300 font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="flex items-center gap-1.5 text-[10px] font-mono glass-l1 bg-emerald-500/20 border border-emerald-400/50 px-2.5 py-1 rounded-full text-emerald-900 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                 TIMER RUNNING
               </span>
             ) : (
-              <span className="flex items-center gap-1.5 text-[10px] font-mono bg-amber-950/90 border border-amber-500/50 px-2.5 py-1 rounded-full text-amber-300 font-bold">
-                <Lock className="w-3 h-3 text-amber-400" />
+              <span className="flex items-center gap-1.5 text-[10px] font-mono glass-l1 bg-amber-500/20 border border-amber-400/50 px-2.5 py-1 rounded-full text-amber-900 font-bold">
+                <Lock className="w-3 h-3 text-amber-600" />
                 TIMER FROZEN AT SCAN
               </span>
             )}
-            <span className="text-[10px] font-mono bg-slate-900 px-2 py-0.5 rounded text-sky-400 border border-slate-800 uppercase font-semibold">
+            <span className="text-[10px] font-mono glass-l1 px-2.5 py-0.5 rounded-full text-slate-700 border border-white/60 uppercase font-semibold">
               {timeZoneShort}
             </span>
           </div>
         </div>
 
         {/* Operating Shelter Selector */}
-        <div className="pt-2 border-t border-slate-800/80 space-y-2">
+        <div className="pt-3 border-t border-white/40 space-y-2 relative z-10">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <span>{t.selectShelter}</span>
               <span className="text-[11px] text-slate-500">
                 ({shelters.length} Coastal Shelters Available)
               </span>
             </label>
-            <span className="text-[11px] font-mono font-semibold text-sky-400">
+            <span className="text-[11px] font-mono font-bold text-[#007AFF]">
               ID: {selectedShelterId || "N/A"}
             </span>
           </div>
           <select
             value={selectedShelterId}
             onChange={(e) => setSelectedShelterId(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 font-medium"
+            className="w-full glass-select rounded-2xl px-4 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 transition shadow-inner cursor-pointer"
           >
             {shelters.map((s) => (
-              <option key={s.id} value={s.id}>
+              <option key={s.id} value={s.id} className="bg-white text-slate-900">
                 [{s.state === "ANDHRA_PRADESH" ? "AP" : "OD"}] {s.name} — {s.district} (Occupancy: {s.current_occupancy}/{s.capacity_persons})
               </option>
             ))}
@@ -1556,25 +1944,27 @@ export default function ScanPage() {
 
         {/* Real-time Shelter Capacity Bar */}
         {currentShelter && (
-          <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2.5">
+          <div className="p-4 rounded-2xl glass-l1 border border-white/60 space-y-2.5 relative z-10 text-slate-800">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 font-medium">
+              <span className="text-slate-600 font-bold">
                 Shelter Capacity Status:
               </span>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-white text-sm">
+                <span className="font-bold text-slate-950 text-sm">
                   {currentOccupancy}{" "}
                   <span className="text-slate-500 text-xs font-normal">
                     / {currentCapacity} Persons
                   </span>
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${occupancyPercent >= 90
-                      ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                  className={cn(
+                    "px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono glass-l1 border",
+                    occupancyPercent >= 90
+                      ? "bg-rose-500/20 text-rose-900 border-rose-400/60"
                       : occupancyPercent >= 75
-                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                        : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                    }`}
+                      ? "bg-amber-500/20 text-amber-900 border-amber-400/60"
+                      : "bg-emerald-500/20 text-emerald-900 border-emerald-400/60"
+                  )}
                 >
                   {occupancyPercent}% FULL
                 </span>
@@ -1582,28 +1972,30 @@ export default function ScanPage() {
             </div>
 
             {/* Visual Progress Bar */}
-            <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden relative">
+            <div className="w-full h-2.5 rounded-full bg-slate-200/80 border border-white/80 overflow-hidden relative shadow-inner">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${occupancyPercent >= 90
-                    ? "bg-red-500 shadow-md shadow-red-500/50"
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  occupancyPercent >= 90
+                    ? "bg-rose-500 shadow-md shadow-rose-500/50"
                     : occupancyPercent >= 75
-                      ? "bg-amber-500 shadow-md shadow-amber-500/50"
-                      : "bg-emerald-500 shadow-md shadow-emerald-500/50"
-                  }`}
+                    ? "bg-amber-500 shadow-md shadow-amber-500/50"
+                    : "bg-emerald-500 shadow-md shadow-emerald-500/50"
+                )}
                 style={{ width: `${occupancyPercent}%` }}
               />
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+            <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 font-medium">
               <span>
                 Available Vacancy:{" "}
-                <strong className="text-emerald-400 font-bold">
+                <strong className="text-emerald-800 font-bold font-mono">
                   {remainingSpots} Remaining
                 </strong>
               </span>
               <span>
                 Admitted This Gate Shift:{" "}
-                <strong className="text-sky-400 font-bold">
+                <strong className="text-[#007AFF] font-bold font-mono">
                   +{totalShiftEvacuees} Persons ({totalShiftHouseholds} Families)
                 </strong>
               </span>
@@ -1615,11 +2007,13 @@ export default function ScanPage() {
       {activeTab === "scanner" ? (
         <>
           {/* CAMERA SCANNER VIEWPORT */}
-          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Camera className="w-4 h-4 text-emerald-400" />
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+          <div className="p-6 sm:p-7 rounded-[38px] glass-l2 border border-white/60 shadow-lg space-y-5 relative">
+            <div className="flex flex-wrap items-center justify-between gap-2 relative z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl glass-l3 text-[#007AFF] border border-white/60 flex items-center justify-center shadow-xs">
+                  <Camera className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <h2 className="text-base font-black text-slate-950 uppercase tracking-tight">
                   Live Camera Feed
                 </h2>
               </div>
@@ -1731,10 +2125,13 @@ export default function ScanPage() {
                     <div className="absolute inset-x-2 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-lg shadow-emerald-400/80 rounded animate-scan-laser" />
                   </div>
 
-                  <div className="mt-3 px-3 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-[11px] font-medium text-slate-300 backdrop-blur-sm">
-                    {activeCameraLabel
-                      ? `Scanning via ${activeCameraLabel}`
-                      : "Align QR Pass Token in Target Square"}
+                  <div className="mt-3 px-4 py-1.5 rounded-full lg-base lg-clear text-[11px] font-bold text-white shadow-xl flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>
+                      {activeCameraLabel
+                        ? `Scanning via ${activeCameraLabel}`
+                        : "Align QR Pass Token in Target Square"}
+                    </span>
                   </div>
                 </div>
               )}
@@ -1821,51 +2218,53 @@ export default function ScanPage() {
               className="hidden"
             />
 
-            {/* Camera Running Controls Bar */}
+            {/* Camera Running Controls Bar (Liquid Glass Control Capsule) */}
             {isCameraActive && (
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <button
-                  onClick={stopCamera}
-                  className="px-4 py-2 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold text-xs transition flex items-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  <span>Pause Camera</span>
-                </button>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                <div className="lg-base lg-control p-1 inline-flex items-center gap-1.5 shadow-xl">
+                  <button
+                    onClick={stopCamera}
+                    className="lg-inner-item px-3.5 py-1.5 rounded-full text-rose-300 font-bold text-xs transition flex items-center gap-1.5"
+                  >
+                    <X className="w-4 h-4 text-rose-400" />
+                    <span>Pause Camera</span>
+                  </button>
 
-                {/* COMBINED DRAG & DROP UPLOAD BUTTON WHEN CAMERA RUNNING */}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragEnter={handleDragEnter}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`px-3.5 py-2 rounded-xl text-xs transition-all duration-150 border flex items-center gap-1.5 select-none ${
-                    isDragging
-                      ? "bg-emerald-950 border-emerald-400 text-emerald-300 ring-4 ring-emerald-500/40 scale-105"
-                      : isScanningImage
-                      ? "bg-sky-950/80 border-sky-500/50 text-sky-300"
-                      : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border-slate-700 hover:border-slate-600"
-                  }`}
-                  title="Click to browse or drag & drop pass image here (PNG, JPG, JPEG, WEBP)"
-                >
-                  {isDragging ? (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
-                      <span className="font-bold text-emerald-300">Drop Image to Scan</span>
-                    </>
-                  ) : isScanningImage ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-400" />
-                      <span>Scanning QR...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-3.5 h-3.5 text-sky-400" />
-                      <span>Upload Pass Photo</span>
-                    </>
-                  )}
-                </button>
+                  {/* COMBINED DRAG & DROP UPLOAD BUTTON WHEN CAMERA RUNNING */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragEnter={handleDragEnter}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`lg-inner-item px-3.5 py-1.5 rounded-full text-xs transition flex items-center gap-1.5 select-none ${
+                      isDragging
+                        ? "bg-emerald-500/30 text-emerald-200 ring-2 ring-emerald-400"
+                        : isScanningImage
+                        ? "bg-sky-500/30 text-sky-200"
+                        : "text-slate-200 hover:text-white"
+                    }`}
+                    title="Click to browse or drag & drop pass image here (PNG, JPG, JPEG, WEBP)"
+                  >
+                    {isDragging ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
+                        <span className="font-bold text-emerald-300">Drop Image to Scan</span>
+                      </>
+                    ) : isScanningImage ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                        <span>Scanning QR...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5 text-sky-400" />
+                        <span>Upload Pass Photo</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1933,101 +2332,106 @@ export default function ScanPage() {
             )}
 
             {/* MANUAL CODE ENTRY / QUICK TEST BUTTONS */}
-            <div className="pt-3 border-t border-slate-800 space-y-3">
+            <div className="pt-4 border-t border-white/40 space-y-3.5 relative z-10">
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   placeholder="Paste or enter raw pass token (e.g. V1|OD-KEN-RAJ-001|c4b1...)"
-                  className="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono"
+                  className="flex-1 glass-input rounded-2xl px-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 font-mono font-semibold focus:outline-none"
                 />
                 <button
+                  type="button"
                   onClick={() => handleProcessCode(manualCode)}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs whitespace-nowrap shadow-md shadow-emerald-600/30"
+                  className="px-5 py-2.5 rounded-2xl bg-[#007AFF] hover:bg-[#0066D6] text-white font-bold text-xs whitespace-nowrap shadow-md shadow-blue-500/20 active:scale-95 transition cursor-pointer"
                 >
                   Verify Pass
                 </button>
               </div>
 
               {/* 1-Click Quick Test Pass Tokens */}
-              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-2">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="font-semibold flex items-center gap-1 text-slate-300">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <div className="p-4 rounded-2xl glass-l1 border border-white/60 space-y-2.5 shadow-inner">
+                <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold">
+                  <span className="font-bold flex items-center gap-1.5 text-slate-900">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                     Quick Test Passes (Odisha & Andhra Pradesh Cases):
                   </span>
                   <span>1-Click Test Pass Simulation</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <button
+                    type="button"
                     onClick={() => {
                       setManualCode(samplePass1);
                       handleProcessCode(samplePass1);
                     }}
-                    className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-left border border-slate-700/60 transition group"
+                    className="p-2.5 rounded-xl glass-l1 hover:bg-white/60 border border-white/60 text-left transition group shadow-xs cursor-pointer"
                   >
-                    <div className="font-bold text-sky-300 text-[11px] group-hover:text-white flex items-center justify-between">
+                    <div className="font-bold text-slate-900 text-[11px] group-hover:text-[#007AFF] flex items-center justify-between">
                       <span>Pravat Nayak</span>
-                      <span className="text-[10px] text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-500/30">
+                      <span className="text-[10px] text-rose-700 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-400/40 font-bold">
                         P1 PREG
                       </span>
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
                       Talachua • 5 Members (1 Infant, 2 Cattle)
                     </div>
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       setManualCode(samplePass2);
                       handleProcessCode(samplePass2);
                     }}
-                    className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-left border border-slate-700/60 transition group"
+                    className="p-2.5 rounded-xl glass-l1 hover:bg-white/60 border border-white/60 text-left transition group shadow-xs cursor-pointer"
                   >
-                    <div className="font-bold text-amber-300 text-[11px] group-hover:text-white flex items-center justify-between">
+                    <div className="font-bold text-slate-900 text-[11px] group-hover:text-[#007AFF] flex items-center justify-between">
                       <span>Bishnu Das</span>
-                      <span className="text-[10px] text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-500/30">
+                      <span className="text-[10px] text-rose-700 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-400/40 font-bold">
                         P1 BED
                       </span>
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
                       Batighar • 6 Members (1 Bedridden, 4 Cattle)
                     </div>
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       setManualCode(samplePass3);
                       handleProcessCode(samplePass3);
                     }}
-                    className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-left border border-slate-700/60 transition group"
+                    className="p-2.5 rounded-xl glass-l1 hover:bg-white/60 border border-white/60 text-left transition group shadow-xs cursor-pointer"
                   >
-                    <div className="font-bold text-emerald-300 text-[11px] group-hover:text-white flex items-center justify-between">
+                    <div className="font-bold text-slate-900 text-[11px] group-hover:text-[#007AFF] flex items-center justify-between">
                       <span>K. Appala Naidu</span>
-                      <span className="text-[10px] text-amber-400 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/30">
+                      <span className="text-[10px] text-amber-800 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-400/40 font-bold">
                         P2 INF
                       </span>
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
                       Bheemili AP • 4 Members (1 Infant)
                     </div>
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       setManualCode(samplePass4);
                       handleProcessCode(samplePass4);
                     }}
-                    className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-left border border-slate-700/60 transition group"
+                    className="p-2.5 rounded-xl glass-l1 hover:bg-white/60 border border-white/60 text-left transition group shadow-xs cursor-pointer"
                   >
-                    <div className="font-bold text-purple-300 text-[11px] group-hover:text-white flex items-center justify-between">
+                    <div className="font-bold text-slate-900 text-[11px] group-hover:text-[#007AFF] flex items-center justify-between">
                       <span>M. Subba Rao</span>
-                      <span className="text-[10px] text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-500/30">
+                      <span className="text-[10px] text-rose-700 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-400/40 font-bold">
                         P1 CHRONIC
                       </span>
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
                       Perupalem AP • 3 Members (Insulin-dependent)
                     </div>
                   </button>
@@ -2038,37 +2442,47 @@ export default function ScanPage() {
 
           {/* COMPREHENSIVE HOUSEHOLD INTAKE DOSSIER CARD */}
           {scannedResult && (
-            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/60 space-y-5 shadow-2xl relative overflow-hidden">
+            <div
+              id="intake-dossier-card"
+              className="p-6 sm:p-7 rounded-[38px] glass-l2 border border-emerald-400/60 space-y-5 shadow-2xl relative overflow-hidden"
+            >
               {/* Decorative Accent Glow */}
               <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
               {/* Status Header */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5" />
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-white/40 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl glass-l3 text-emerald-600 border border-white/60 flex items-center justify-center shadow-xs">
+                    <CheckCircle className="w-5 h-5 stroke-[2.2]" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white tracking-tight">
+                    <h3 className="text-base sm:text-lg font-black text-slate-950 tracking-tight">
                       {t.passVerified}
                     </h3>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-xs text-slate-600 font-medium">
                       Official Evacuee Intake Dossier & Gate Muster
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-slate-950 text-emerald-400 border border-emerald-500/40">
+                  <span className="px-3 py-1 rounded-full text-xs font-mono font-bold glass-l1 text-emerald-900 border border-emerald-400/60">
                     PASS #{scannedResult.shortRef.toUpperCase()}
                   </span>
                   {isAdmitted ? (
-                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      ADMITTED
-                    </span>
+                    isDuplicateScan ? (
+                      <span className="px-3 py-1 rounded-full text-[11px] font-bold glass-l1 bg-amber-500/25 text-amber-950 border border-amber-500/60 flex items-center gap-1.5 shadow-xs">
+                        <Lock className="w-3.5 h-3.5 text-amber-700" />
+                        ALREADY ADMITTED (RE-ADDITION BLOCKED)
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 rounded-full text-[11px] font-bold glass-l1 bg-emerald-500/20 text-emerald-900 border border-emerald-400/60 flex items-center gap-1.5 shadow-xs">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        ADMITTED & STOCKS UPGRADED
+                      </span>
+                    )
                   ) : (
-                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-950 text-amber-300 border border-amber-500/40">
+                    <span className="px-3 py-1 rounded-full text-[11px] font-bold glass-l1 bg-amber-500/20 text-amber-900 border border-amber-400/60">
                       PENDING GATE ENTRY
                     </span>
                   )}
@@ -2077,65 +2491,138 @@ export default function ScanPage() {
 
               {/* Shelter Destination Match Verification */}
               {scannedResult.shelterId === selectedShelterId ? (
-                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <div className="p-3.5 rounded-2xl glass-l1 bg-emerald-500/15 border border-emerald-400/50 text-emerald-900 text-xs flex items-center justify-between relative z-10 font-medium">
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
                     Official Designated Shelter Verified:{" "}
-                    <strong>{currentShelter?.name}</strong>
+                    <strong className="text-slate-950">{currentShelter?.name}</strong>
                   </span>
-                  <span className="text-[10px] font-mono bg-emerald-900/60 px-2 py-0.5 rounded text-emerald-200">
+                  <span className="text-[10px] font-mono glass-l1 px-2.5 py-0.5 rounded-full border border-emerald-400/60 font-bold">
                     MATCH CONFIRMED
                   </span>
                 </div>
               ) : (
-                <div className="p-3 rounded-xl bg-amber-950/50 border border-amber-500/40 text-amber-200 text-xs flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <div className="p-3.5 rounded-2xl glass-l1 bg-amber-500/15 border border-amber-400/50 text-amber-900 text-xs flex items-center justify-between relative z-10 font-medium">
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
                     Originally Designated For Shelter:{" "}
-                    <strong>{scannedResult.shelterId}</strong>
+                    <strong className="text-slate-950">{scannedResult.shelterId}</strong>
                   </span>
-                  <span className="text-[10px] font-bold bg-amber-900/60 px-2 py-0.5 rounded text-amber-200">
+                  <span className="text-[10px] font-bold glass-l1 px-2.5 py-0.5 rounded-full border border-amber-400/60">
                     DIVERTED EVACUEE
                   </span>
                 </div>
               )}
 
+              {/* DUPLICATE SCAN HIGH-VISIBILITY ALERT BANNER */}
+              {isDuplicateScan && duplicateNotice && (
+                <div className="p-5 rounded-2xl glass-l1 bg-amber-500/15 border-2 border-amber-500/70 text-amber-950 shadow-xl space-y-3 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-amber-500/30">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-700 shrink-0">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 animate-pulse" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-amber-950 tracking-tight flex items-center gap-2">
+                          <span>DUPLICATE SCAN DETECTED • ALREADY ADMITTED</span>
+                          <span className="text-[10px] font-mono font-bold bg-amber-500/30 text-amber-900 px-2 py-0.5 rounded-full border border-amber-500/40">
+                            SCAN #{duplicateNotice.scanCount || 2}
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-amber-900/90 font-medium">
+                          This QR Pass was already checked into safe shelter. Re-addition into shelter headcount was actively blocked to safeguard against capacity miscalculation.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-mono font-bold uppercase text-amber-800/80 block">
+                        Initial Gate Entry
+                      </span>
+                      <span className="text-xs font-mono font-black text-amber-950">
+                        {formatTimestamp(duplicateNotice.firstAdmittedAt, detectedTimeZone, true)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Protection Metrics Summary */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                    <div className="p-3 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-amber-500/30 shadow-inner">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                        Shelter Headcount
+                      </span>
+                      <span className="text-sm font-black text-emerald-800 flex items-center gap-1 mt-0.5">
+                        <ShieldAlert className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>+{duplicateNotice.preventedMembers} Blocked (No Overcount)</span>
+                      </span>
+                      <span className="text-[10px] text-slate-500 block mt-0.5">
+                        Shelter capacity preserved
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-amber-500/30 shadow-inner">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                        Ration Deductions
+                      </span>
+                      <span className="text-sm font-black text-blue-800 flex items-center gap-1 mt-0.5">
+                        <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span>0 New Deductions</span>
+                      </span>
+                      <span className="text-[10px] text-slate-500 block mt-0.5">
+                        Water ({duplicateNotice.preventedWater}L) & Food ({duplicateNotice.preventedFood} pkts) protected
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-amber-500/30 shadow-inner">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                        Designated Shelter
+                      </span>
+                      <span className="text-xs font-bold text-slate-900 truncate block mt-0.5">
+                        {duplicateNotice.shelterName}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-500 block mt-0.5">
+                        Token: #{scannedResult.shortRef.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* SECTION 1: HOUSEHOLD IDENTITY, ORIGIN & ACCURATE VERIFICATION TIMESTAMPS */}
-              <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-                  <div className="text-[11px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-sky-400" />
+              <div className="p-5 rounded-[28px] glass-l1 border border-white/60 space-y-4 relative z-10 text-slate-800">
+                <div className="flex items-center justify-between pb-2.5 border-b border-white/40">
+                  <div className="text-xs uppercase font-extrabold text-[#007AFF] tracking-wider flex items-center gap-2">
+                    <Users className="w-4 h-4 text-[#007AFF]" />
                     <span>Household Identification & Origin</span>
                   </div>
-                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
+                  <span className="text-[10px] font-mono text-emerald-900 glass-l1 px-2.5 py-0.5 rounded-full border border-emerald-400/60 font-bold">
                     VERIFIED DOSSIER
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs">
                   <div>
-                    <span className="text-slate-400 block text-[11px]">
+                    <span className="text-slate-500 block text-[11px] font-semibold">
                       Head of Household:
                     </span>
-                    <span className="text-sm font-bold text-white">
+                    <span className="text-base font-black text-slate-950">
                       {scannedResult.headName}
                     </span>
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block text-[11px]">
+                    <span className="text-slate-500 block text-[11px] font-semibold">
                       Hamlet / Village of Origin:
                     </span>
-                    <span className="text-sm font-semibold text-slate-200">
+                    <span className="text-sm font-bold text-slate-900">
                       {scannedResult.hamletName}
                     </span>
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block text-[11px]">
+                    <span className="text-slate-500 block text-[11px] font-semibold">
                       Ward / Gram Panchayat:
                     </span>
-                    <span className="text-slate-300 font-medium">
+                    <span className="text-slate-800 font-medium">
                       Ward {matchedHousehold?.ward_number || 1} •{" "}
                       {currentShelter?.gram_panchayat || "Coastal Sector"}
                     </span>
@@ -2160,106 +2647,135 @@ export default function ScanPage() {
                   const isDuplicate = scanAuditRecord?.duplicate || false;
 
                   return (
-                    <div className="space-y-3 pt-3 border-t border-slate-800/80">
+                    <div className="space-y-3 pt-3.5 border-t border-white/40">
                       <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                            <Clock className="w-4 h-4 text-emerald-400" />
+                          <span className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                            <Clock className="w-4 h-4 text-emerald-600" />
                             <span>Official Shelter Arrival Time Record</span>
                           </span>
-                          <span className="text-[10px] font-mono text-sky-400 bg-sky-950/80 px-2 py-0.5 rounded border border-sky-500/30">
+                          <span className="text-[10px] font-mono text-[#007AFF] glass-l1 px-2.5 py-0.5 rounded-full border border-sky-300/60 font-bold">
                             {detectedTimeZone} ({timeZoneShort})
                           </span>
                         </div>
-                        {isDuplicate ? (
-                          <span className="text-[10px] font-mono font-bold bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-500/40">
-                            RE-SCANNED (Scan #{scanAuditRecord?.scan_count || 2})
+                        {isDuplicateScan ? (
+                          <span className="text-[10px] font-mono font-bold glass-l1 bg-amber-500/25 text-amber-950 px-2.5 py-0.5 rounded-full border border-amber-500/60 flex items-center gap-1 shadow-xs">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                            RE-SCANNED (Scan #{scanAuditRecord?.scan_count || duplicateNotice?.scanCount || 2}) • RE-ENTRY PREVENTED
                           </span>
                         ) : (
-                          <span className="text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40">
+                          <span className="text-[10px] font-mono font-bold glass-l1 bg-emerald-500/20 text-emerald-900 px-2.5 py-0.5 rounded-full border border-emerald-400/60">
                             FIRST ARRIVAL VERIFIED
                           </span>
                         )}
                       </div>
 
                       {/* 2-Column Timestamps: QR Created At & QR Scanned At */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         {/* QR Created At */}
-                        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-                          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide flex items-center justify-between">
+                        <div className="p-4 rounded-2xl glass-l1 border border-white/60 shadow-inner">
+                          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide flex items-center justify-between">
                             <span>QR Created At</span>
-                            <span className="text-[10px] font-mono text-sky-400 font-normal">PASS TIMESTAMP</span>
+                            <span className="text-[10px] font-mono text-[#007AFF] font-bold">PASS TIMESTAMP</span>
                           </div>
-                          <div className="text-xl font-mono font-black text-white mt-1">
+                          <div className="text-xl font-mono font-black text-slate-950 mt-1">
                             {formatClockTime(qrCreatedAt, detectedTimeZone)}
                           </div>
-                          <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
+                          <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between font-medium">
                             <span>{formatTimestamp(qrCreatedAt, detectedTimeZone, true)}</span>
-                            <span className="text-sky-400 font-mono text-[9px] bg-sky-950/70 px-1.5 py-0.5 rounded border border-sky-500/30">
+                            <span className="text-[#007AFF] font-mono text-[9px] glass-l1 px-2 py-0.5 rounded-full border border-sky-300/60 font-bold">
                               LOCAL TIME
                             </span>
                           </div>
                         </div>
 
                         {/* QR Scanned At */}
-                        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-                          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide flex items-center justify-between">
-                            <span>QR Scanned At</span>
-                            <span className="text-[10px] font-mono text-emerald-400 font-normal">GATE SCAN</span>
+                        <div className="p-4 rounded-2xl glass-l1 border border-white/60 shadow-inner">
+                          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide flex items-center justify-between">
+                            <span>{isDuplicateScan ? "Initial Gate Check-In" : "QR Scanned At"}</span>
+                            <span
+                              className={cn(
+                                "text-[10px] font-mono font-bold",
+                                isDuplicateScan ? "text-amber-800" : "text-emerald-700"
+                              )}
+                            >
+                              {isDuplicateScan ? "FIRST ENTRY" : "GATE SCAN"}
+                            </span>
                           </div>
-                          <div className="text-xl font-mono font-black text-emerald-400 mt-1">
-                            {formatClockTime(qrScannedAt, detectedTimeZone)}
+                          <div
+                            className={cn(
+                              "text-xl font-mono font-black mt-1",
+                              isDuplicateScan ? "text-amber-950" : "text-emerald-700"
+                            )}
+                          >
+                            {formatClockTime(
+                              duplicateNotice?.firstAdmittedAt || qrScannedAt,
+                              detectedTimeZone
+                            )}
                           </div>
-                          <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
-                            <span>{formatTimestamp(qrScannedAt, detectedTimeZone, true)}</span>
-                            <span className="text-emerald-400 font-mono text-[9px] bg-emerald-950/70 px-1.5 py-0.5 rounded border border-emerald-500/30">
-                              LOCAL TIME
+                          <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between font-medium">
+                            <span>
+                              {formatTimestamp(
+                                duplicateNotice?.firstAdmittedAt || qrScannedAt,
+                                detectedTimeZone,
+                                true
+                              )}
+                            </span>
+                            <span
+                              className={cn(
+                                "font-mono text-[9px] glass-l1 px-2 py-0.5 rounded-full border font-bold",
+                                isDuplicateScan
+                                  ? "text-amber-800 border-amber-400/60"
+                                  : "text-emerald-700 border-emerald-400/60"
+                              )}
+                            >
+                              {isDuplicateScan ? "ORIGINAL ENTRY" : "LOCAL TIME"}
                             </span>
                           </div>
                         </div>
                       </div>
 
                       {/* Time Taken to Reach Shelter */}
-                      <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/40 flex flex-wrap items-center justify-between gap-3">
+                      <div className="p-4 rounded-2xl glass-l1 bg-emerald-500/15 border border-emerald-400/50 flex flex-wrap items-center justify-between gap-3 shadow-inner">
                         <div>
-                          <div className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
+                          <div className="text-[11px] font-bold text-emerald-950 uppercase tracking-wider">
                             Time Taken to Reach Shelter
                           </div>
-                          <div className="text-3xl font-mono font-black text-emerald-300 mt-1">
+                          <div className="text-3xl font-mono font-black text-emerald-900 mt-1">
                             {formatDuration(durationSeconds)}
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-1">
+                          <div className="text-[10px] text-slate-600 mt-1 font-medium">
                             Calculated: QR Scan Time ({formatClockTime(qrScannedAt, detectedTimeZone)}) − QR Creation Time ({formatClockTime(qrCreatedAt, detectedTimeZone)}) • {detectedTimeZone}
                           </div>
                         </div>
 
                         <div className="flex flex-col items-end gap-1">
-                          <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold">
+                          <span className="text-[10px] font-mono text-slate-600 uppercase font-semibold">
                             Timer State
                           </span>
-                          <span className="inline-flex items-center gap-1.5 text-xs font-mono font-black text-amber-300 bg-amber-950/90 px-3 py-1.5 rounded-lg border border-amber-500/50 shadow-inner">
-                            <Lock className="w-3.5 h-3.5 text-amber-400" />
+                          <span className="inline-flex items-center gap-1.5 text-xs font-mono font-black text-amber-900 glass-l1 bg-amber-500/20 px-3 py-1.5 rounded-xl border border-amber-400/60 shadow-inner">
+                            <Lock className="w-3.5 h-3.5 text-amber-600" />
                             TIMER FROZEN AT SCAN
                           </span>
                         </div>
                       </div>
 
                       {/* STATUS */}
-                      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                      <div className="p-3.5 rounded-2xl glass-l1 border border-white/60 flex items-center justify-between">
                         <div>
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                             STATUS
                           </div>
-                          <div className="text-base font-black text-emerald-400 flex items-center gap-2 mt-0.5">
-                            <CheckCircle className="w-5 h-5 text-emerald-400" />
+                          <div className="text-base font-black text-emerald-700 flex items-center gap-2 mt-0.5">
+                            <CheckCircle className="w-5 h-5 text-emerald-600" />
                             <span>✓ Reached Shelter</span>
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] font-mono text-slate-400 block">
+                          <span className="text-[10px] font-mono text-slate-500 block font-semibold">
                             Shelter Gate Muster
                           </span>
-                          <span className="text-xs font-mono font-bold text-emerald-300">
+                          <span className="text-xs font-mono font-black text-slate-900">
                             #{scannedResult.shortRef.toUpperCase()} • {currentShelter?.name || "Official Shelter"}
                           </span>
                         </div>
@@ -2270,71 +2786,73 @@ export default function ScanPage() {
               </div>
 
               {/* SECTION 2: DEMOGRAPHIC BREAKDOWN (WHO ARE ENTERING) */}
-              <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-3">
+              <div className="p-5 rounded-[28px] glass-l1 border border-white/60 space-y-3.5 relative z-10 text-slate-800">
                 <div className="flex items-center justify-between">
-                  <div className="text-[11px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="text-xs uppercase font-extrabold text-[#007AFF] tracking-wider flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-[#007AFF]" />
                     <span>Calculated Family Demographic Breakdown</span>
                   </div>
-                  <span className="text-xs font-bold text-sky-400 bg-sky-950/80 px-2.5 py-0.5 rounded-full border border-sky-500/30">
-                    +{scannedResult.totalMembers} Headcount Entering Shelter
+                  <span className="text-xs font-bold text-[#007AFF] glass-l1 px-3 py-1 rounded-full border border-sky-300/60">
+                    {isDuplicateScan
+                      ? `Protected: ${scannedResult.totalMembers} Headcount Already Counted`
+                      : `+${scannedResult.totalMembers} Headcount Entering Shelter`}
                   </span>
                 </div>
 
                 {/* Metric Badges */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  <div className="p-3 rounded-2xl glass-l1 border border-white/60 text-center shadow-inner">
+                    <div className="text-[10px] text-slate-500 uppercase font-bold">
                       Total Members
                     </div>
-                    <div className="text-base font-black text-sky-400 mt-0.5">
+                    <div className="text-lg font-black text-[#007AFF] mt-0.5 font-mono">
                       {scannedResult.totalMembers}
                     </div>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">
+                  <div className="p-3 rounded-2xl glass-l1 border border-white/60 text-center shadow-inner">
+                    <div className="text-[10px] text-slate-500 uppercase font-bold">
                       Adult Males
                     </div>
-                    <div className="text-base font-bold text-slate-200 mt-0.5">
+                    <div className="text-lg font-black text-slate-900 mt-0.5 font-mono">
                       {scannedResult.maleCount}
                     </div>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">
+                  <div className="p-3 rounded-2xl glass-l1 border border-white/60 text-center shadow-inner">
+                    <div className="text-[10px] text-slate-500 uppercase font-bold">
                       Adult Females
                     </div>
-                    <div className="text-base font-bold text-slate-200 mt-0.5">
+                    <div className="text-lg font-black text-slate-900 mt-0.5 font-mono">
                       {scannedResult.femaleCount}
                     </div>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold flex items-center justify-center gap-1">
-                      <Baby className="w-3 h-3 text-pink-400" />
+                  <div className="p-3 rounded-2xl glass-l1 border border-white/60 text-center shadow-inner">
+                    <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center justify-center gap-1">
+                      <Baby className="w-3 h-3 text-pink-500" />
                       <span>Infants &lt;5y</span>
                     </div>
                     <div
-                      className={`text-base font-bold mt-0.5 ${scannedResult.infantCount > 0
-                          ? "text-pink-400"
-                          : "text-slate-400"
-                        }`}
+                      className={cn(
+                        "text-lg font-black mt-0.5 font-mono",
+                        scannedResult.infantCount > 0 ? "text-pink-600" : "text-slate-400"
+                      )}
                     >
                       {scannedResult.infantCount}
                     </div>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold flex items-center justify-center gap-1">
-                      <HeartPulse className="w-3 h-3 text-amber-400" />
+                  <div className="p-3 rounded-2xl glass-l1 border border-white/60 text-center shadow-inner">
+                    <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center justify-center gap-1">
+                      <HeartPulse className="w-3 h-3 text-amber-500" />
                       <span>Elderly &gt;60y</span>
                     </div>
                     <div
-                      className={`text-base font-bold mt-0.5 ${scannedResult.elderlyCount > 0
-                          ? "text-amber-400"
-                          : "text-slate-400"
-                        }`}
+                      className={cn(
+                        "text-lg font-black mt-0.5 font-mono",
+                        scannedResult.elderlyCount > 0 ? "text-amber-600" : "text-slate-400"
+                      )}
                     >
                       {scannedResult.elderlyCount}
                     </div>
@@ -2342,11 +2860,11 @@ export default function ScanPage() {
                 </div>
 
                 {/* Livestock Info */}
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 text-xs">
-                  <span className="text-slate-400 flex items-center gap-1.5">
+                <div className="flex items-center justify-between p-3 rounded-2xl glass-l1 border border-white/60 text-xs font-medium">
+                  <span className="text-slate-600 flex items-center gap-1.5 font-bold">
                     <span>Domestic Livestock & Cattle:</span>
                   </span>
-                  <span className="font-bold text-emerald-400">
+                  <span className="font-bold text-emerald-800">
                     {scannedResult.livestockCount > 0
                       ? `${scannedResult.livestockCount} Cattle / Goats (Shelter Pen Required)`
                       : "No Livestock Registered"}
@@ -2355,37 +2873,39 @@ export default function ScanPage() {
               </div>
 
               {/* SECTION 3: SPECIAL MEDICAL TRIAGE & CLINICAL NOTES */}
-              <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-3">
+              <div className="p-5 rounded-[28px] glass-l1 border border-white/60 space-y-3.5 relative z-10 text-slate-800">
                 <div className="flex items-center justify-between">
-                  <div className="text-[11px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-                    <HeartPulse className="w-3.5 h-3.5 text-red-400" />
+                  <div className="text-xs uppercase font-extrabold text-rose-600 tracking-wider flex items-center gap-2">
+                    <HeartPulse className="w-4 h-4 text-rose-500" />
                     <span>Special Medical Vulnerability & Triage Assessment</span>
                   </div>
 
                   <span
-                    className={`px-2.5 py-0.5 rounded text-xs font-mono font-bold ${scannedResult.triageCode.startsWith("P1")
-                        ? "bg-red-500/20 text-red-400 border border-red-500/40"
+                    className={cn(
+                      "px-3 py-1 rounded-full text-xs font-mono font-bold glass-l1 border",
+                      scannedResult.triageCode.startsWith("P1")
+                        ? "bg-rose-500/20 text-rose-900 border-rose-400/60"
                         : scannedResult.triageCode.startsWith("P2")
-                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                          : "bg-sky-500/20 text-sky-400 border border-sky-500/40"
-                      }`}
+                        ? "bg-amber-500/20 text-amber-900 border-amber-400/60"
+                        : "bg-sky-500/20 text-sky-900 border-sky-400/60"
+                    )}
                   >
                     TRIAGE: {scannedResult.triageCode}
                   </span>
                 </div>
 
                 {/* Clinical Notes Box */}
-                <div className="p-3.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2 text-xs">
-                  <div className="flex justify-between items-center text-slate-400 text-[11px]">
-                    <span className="font-semibold text-slate-300">
+                <div className="p-4 rounded-2xl glass-l1 border border-white/60 space-y-2 text-xs text-slate-800 shadow-inner">
+                  <div className="flex justify-between items-center text-slate-500 text-[11px] font-semibold">
+                    <span className="text-slate-900 font-bold">
                       Intake Clinical Assessment Notes:
                     </span>
-                    <span className="font-mono text-[10px] text-slate-500">
+                    <span className="font-mono text-[10px]">
                       Logged by Medical Intake Officer
                     </span>
                   </div>
 
-                  <p className="text-slate-200 leading-relaxed font-medium">
+                  <p className="text-slate-800 leading-relaxed font-medium">
                     {matchedTriage?.notes ||
                       (scannedResult.triageCode.includes("PREG")
                         ? "High-Risk Pregnancy: Third-trimester expectant mother. Direct to Ground-Floor Wing A (Maternity & Special Care Bay). Provide clean bedroll and notify on-duty ANM nurse."
@@ -2398,10 +2918,10 @@ export default function ScanPage() {
                               : "Standard Refuge: No acute medical emergency reported during intake. Allotted to general communal shelter hall.")}
                   </p>
 
-                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                  <div className="pt-2.5 border-t border-white/40 flex items-center justify-between text-[11px] text-slate-600 font-medium">
                     <span>
                       Recommended Bay:{" "}
-                      <strong className="text-emerald-400">
+                      <strong className="text-emerald-800 font-bold">
                         {scannedResult.triageCode.startsWith("P1")
                           ? "Ground Floor Maternity / Special Care Wing A"
                           : "General Refugee Dormitory Hall 2"}
@@ -2412,8 +2932,8 @@ export default function ScanPage() {
                       <strong
                         className={
                           scannedResult.triageCode.startsWith("P1")
-                            ? "text-red-400"
-                            : "text-sky-400"
+                            ? "text-rose-700 font-bold"
+                            : "text-[#007AFF] font-bold"
                         }
                       >
                         {scannedResult.triageCode.startsWith("P1")
@@ -2426,18 +2946,22 @@ export default function ScanPage() {
               </div>
 
               {/* SECTION 4: IMMEDIATE RELIEF ENTITLEMENT CALCULATOR */}
-              <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-3">
-                <div className="text-[11px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Calculated Gatekeeper Relief Ration Quota</span>
+              <div className="p-5 rounded-[28px] glass-l1 border border-white/60 space-y-3.5 relative z-10 text-slate-800">
+                <div className="text-xs uppercase font-extrabold text-amber-700 tracking-wider flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-amber-600" />
+                  <span>
+                    {isDuplicateScan
+                      ? "Gatekeeper Relief Ration Quota (Allocated at Initial Check-In)"
+                      : "Calculated Gatekeeper Relief Ration Quota"}
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-medium">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="p-3 rounded-2xl glass-l1 border border-white/60 shadow-inner">
+                    <span className="text-[10px] text-slate-500 block font-bold">
                       Drinking Water Quota:
                     </span>
-                    <span className="text-sm font-bold text-sky-400">
+                    <span className="text-sm font-black text-[#007AFF]">
                       {scannedResult.totalMembers * 3} Litres / Day
                     </span>
                     <span className="text-[10px] text-slate-500 block">
@@ -2445,11 +2969,11 @@ export default function ScanPage() {
                     </span>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-medium">
+                  <div className="p-3 rounded-2xl glass-l1 border border-white/60 shadow-inner">
+                    <span className="text-[10px] text-slate-500 block font-bold">
                       Dry Food Rations:
                     </span>
-                    <span className="text-sm font-bold text-amber-400">
+                    <span className="text-sm font-black text-amber-800">
                       {scannedResult.totalMembers * 2} Packets
                     </span>
                     <span className="text-[10px] text-slate-500 block">
@@ -2457,11 +2981,11 @@ export default function ScanPage() {
                     </span>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-medium">
+                  <div className="p-3 rounded-2xl glass-l1 border border-white/60 shadow-inner">
+                    <span className="text-[10px] text-slate-500 block font-bold">
                       ORS Sachets & Halogen:
                     </span>
-                    <span className="text-sm font-bold text-emerald-400">
+                    <span className="text-sm font-black text-emerald-800">
                       {scannedResult.totalMembers * 2} Units
                     </span>
                     <span className="text-[10px] text-slate-500 block">
@@ -2470,42 +2994,42 @@ export default function ScanPage() {
                   </div>
 
                   {scannedResult.infantCount > 0 && (
-                    <div className="p-2.5 rounded-lg bg-pink-950/50 border border-pink-500/30">
-                      <span className="text-[10px] text-pink-300 block font-medium">
+                    <div className="p-3 rounded-2xl glass-l1 bg-pink-500/10 border border-pink-400/40">
+                      <span className="text-[10px] text-pink-700 block font-bold">
                         Infant Baby Formula:
                       </span>
-                      <span className="text-sm font-bold text-pink-200">
+                      <span className="text-sm font-black text-pink-900">
                         {scannedResult.infantCount} Tin / Pack
                       </span>
-                      <span className="text-[10px] text-pink-400/80 block">
+                      <span className="text-[10px] text-pink-600 block">
                         For infant &lt;5y
                       </span>
                     </div>
                   )}
 
                   {scannedResult.femaleCount > 0 && (
-                    <div className="p-2.5 rounded-lg bg-purple-950/50 border border-purple-500/30">
-                      <span className="text-[10px] text-purple-300 block font-medium">
+                    <div className="p-3 rounded-2xl glass-l1 bg-purple-500/10 border border-purple-400/40">
+                      <span className="text-[10px] text-purple-700 block font-bold">
                         Sanitary & Dignity Kits:
                       </span>
-                      <span className="text-sm font-bold text-purple-200">
+                      <span className="text-sm font-black text-purple-900">
                         {scannedResult.femaleCount} Kits
                       </span>
-                      <span className="text-[10px] text-purple-400/80 block">
+                      <span className="text-[10px] text-purple-600 block">
                         Adult female evacuees
                       </span>
                     </div>
                   )}
 
                   {scannedResult.livestockCount > 0 && (
-                    <div className="p-2.5 rounded-lg bg-emerald-950/50 border border-emerald-500/30">
-                      <span className="text-[10px] text-emerald-300 block font-medium">
+                    <div className="p-3 rounded-2xl glass-l1 bg-emerald-500/10 border border-emerald-400/40">
+                      <span className="text-[10px] text-emerald-700 block font-bold">
                         Cattle Fodder Tokens:
                       </span>
-                      <span className="text-sm font-bold text-emerald-200">
+                      <span className="text-sm font-black text-emerald-900">
                         {scannedResult.livestockCount} Feed Bundles
                       </span>
-                      <span className="text-[10px] text-emerald-400/80 block">
+                      <span className="text-[10px] text-emerald-600 block">
                         Pen & dry straw allocation
                       </span>
                     </div>
@@ -2513,65 +3037,214 @@ export default function ScanPage() {
                 </div>
               </div>
 
-              {/* SECTION 5: ADMISSION ACTION & OCCUPANCY UPDATE */}
-              <div className="pt-2 space-y-3">
-                {!isAdmitted ? (
+              {/* SECTION 5: AUTOMATIC SHELTER STOCKS UPGRADE & ACTION */}
+              <div className="pt-2 space-y-3 relative z-10">
+                {isAdmitted ? (
+                  isDuplicateScan ? (
+                    <div className="p-5 rounded-[28px] glass-l1 bg-amber-500/15 border-2 border-amber-500/60 shadow-xl space-y-3.5 text-amber-950">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 font-black text-sm text-amber-950">
+                          <Lock className="w-5 h-5 text-amber-600 shrink-0" />
+                          <span>Idempotency Lock Active • Safe Shelter Capacity Preserved</span>
+                        </span>
+                        <span className="text-[11px] font-mono text-amber-900 glass-l1 px-2.5 py-0.5 rounded-full border border-amber-500/60 font-bold bg-amber-500/20">
+                          DUPLICATE PREVENTED
+                        </span>
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-white/70 dark:bg-slate-900/60 border border-amber-500/40 text-xs space-y-1.5 shadow-inner">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-950">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Miscalculation Safeguard: Zero New Deductions or Headcount Additions</span>
+                        </div>
+                        <p className="text-slate-600 text-[11px] leading-relaxed">
+                          This household was already officially admitted into safe shelter during the initial gate scan. To eliminate double-counting risks, shelter muster headcount was <strong>not incremented (+0 Pax)</strong>, and food & water rations were <strong>not re-deducted</strong>.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-0.5 text-xs">
+                        <div className="p-3 rounded-2xl glass-l1 border border-white/60">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                            Shelter Muster Occupancy
+                          </span>
+                          <span className="text-sm font-black text-emerald-700 font-mono mt-0.5 block">
+                            Preserved (+0 Pax)
+                          </span>
+                          <span className="text-[10px] text-slate-500 block mt-0.5">
+                            Active: {currentShelter?.current_occupancy} / {currentShelter?.capacity_persons}
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-2xl glass-l1 border border-white/60">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                            Water Inventory
+                          </span>
+                          <span className="text-sm font-black text-blue-700 font-mono mt-0.5 block">
+                            Protected (-0 L)
+                          </span>
+                          <span className="text-[10px] text-slate-500 block mt-0.5">
+                            Allocated at first check-in
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-2xl glass-l1 border border-white/60 col-span-2 sm:col-span-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                            Food Rations
+                          </span>
+                          <span className="text-sm font-black text-amber-800 font-mono mt-0.5 block">
+                            Protected (-0 Pkts)
+                          </span>
+                          <span className="text-[10px] text-slate-500 block mt-0.5">
+                            Allocated at first check-in
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 text-[11px] text-slate-700 border-t border-white/40 font-medium">
+                        <span>
+                          Admitted Shelter: <strong className="text-slate-950">{duplicateNotice?.shelterName || currentShelter?.name}</strong> • Gate Entry:{" "}
+                          <strong className="text-slate-950 font-mono">
+                            {formatTimestamp(
+                              existingAdmission?.admitted_at || duplicateNotice?.firstAdmittedAt || Date.now(),
+                              detectedTimeZone,
+                              true
+                            )}
+                          </strong>
+                        </span>
+
+                        {existingAdmission && (
+                          <button
+                            type="button"
+                            onClick={() => handleUndoAdmission(existingAdmission.id)}
+                            className="text-[11px] text-rose-700 hover:text-rose-900 underline font-bold transition cursor-pointer"
+                          >
+                            Revert / Restore Stocks
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-5 rounded-[28px] glass-l1 bg-emerald-500/15 border border-emerald-400/60 shadow-xl space-y-3 text-emerald-950">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 font-black text-sm text-emerald-950">
+                          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <span>Pass Verified • Shelter Stocks Automatically Upgraded!</span>
+                        </span>
+                        <span className="text-[11px] font-mono text-emerald-900 glass-l1 px-2.5 py-0.5 rounded-full border border-emerald-400/60 font-bold">
+                          LIVE SYNCED
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                        <div className="p-3 rounded-2xl glass-l1 border border-white/60">
+                          <span className="text-[10px] uppercase font-bold text-slate-600 block">
+                            Muster Occupancy
+                          </span>
+                          <span className="text-base font-black text-slate-950 font-mono">
+                            +{scannedResult.totalMembers} Pax
+                          </span>
+                          <span className="text-[10px] text-slate-600 block mt-0.5">
+                            Now {currentShelter?.current_occupancy} / {currentShelter?.capacity_persons}
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-2xl glass-l1 border border-white/60">
+                          <span className="text-[10px] uppercase font-bold text-slate-600 block">
+                            Water Deducted & Burn
+                          </span>
+                          <span className="text-base font-black text-[#007AFF] font-mono">
+                            -{scannedResult.totalMembers * 3} L
+                          </span>
+                          <span className="text-[10px] text-slate-600 block mt-0.5">
+                            Burn: {(currentShelter?.current_occupancy || 0) * 3} L/day
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-2xl glass-l1 border border-white/60 col-span-2 sm:col-span-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-600 block">
+                            Food Dispatched & Burn
+                          </span>
+                          <span className="text-base font-black text-amber-800 font-mono">
+                            -{scannedResult.totalMembers * 2} Pkts
+                          </span>
+                          <span className="text-[10px] text-slate-600 block mt-0.5">
+                            Burn: {(currentShelter?.current_occupancy || 0) * 2} pkts/day
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 text-[11px] text-slate-700 border-t border-white/40 font-medium">
+                        <span>
+                          Shelter: <strong className="text-slate-950">{currentShelter?.name}</strong> • Gate Entry:{" "}
+                          <strong className="text-slate-950 font-mono">
+                            {existingAdmission
+                              ? formatTimestamp(
+                                existingAdmission.admitted_at,
+                                detectedTimeZone
+                              )
+                              : formatTimestamp(
+                                scannedAtTimestamp || Date.now(),
+                                detectedTimeZone
+                              )}
+                          </strong>
+                        </span>
+
+                        {existingAdmission && (
+                          <button
+                            type="button"
+                            onClick={() => handleUndoAdmission(existingAdmission.id)}
+                            className="text-[11px] text-rose-700 hover:text-rose-900 underline font-bold transition cursor-pointer"
+                          >
+                            Revert / Restore Stocks
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                ) : (
                   <button
+                    type="button"
                     onClick={handleConfirmAdmission}
-                    className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm transition shadow-lg shadow-emerald-600/40 flex items-center justify-center gap-2 group"
+                    className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 group cursor-pointer active:scale-95"
                   >
                     <ShieldCheck className="w-5 h-5 group-hover:scale-110 transition" />
                     <span>
-                      Confirm Shelter Admission (+{scannedResult.totalMembers}{" "}
-                      Headcount to Muster)
+                      Upgrade Shelter Stocks Now (+{scannedResult.totalMembers} Headcount)
                     </span>
                   </button>
-                ) : (
-                  <div className="p-4 rounded-xl bg-emerald-950/90 border border-emerald-500/50 space-y-2">
-                    <div className="flex items-center justify-between text-emerald-300">
-                      <span className="flex items-center gap-2 font-bold text-sm">
-                        <CheckCircle className="w-5 h-5 text-emerald-400" />
-                        Family Successfully Admitted & Logged in Shelter Muster!
-                      </span>
-                      <span className="text-xs font-mono text-emerald-400">
-                        +{scannedResult.totalMembers} HEADCOUNT
-                      </span>
-                    </div>
-                    <p className="text-xs text-emerald-200/80">
-                      Shelter current occupancy updated to{" "}
-                      <strong>{currentShelter?.current_occupancy} persons</strong>.
-                      Gate entry timestamp recorded at{" "}
-                      <strong className="text-white font-mono">
-                        {existingAdmission
-                          ? formatTimestamp(
-                            existingAdmission.admitted_at,
-                            detectedTimeZone
-                          )
-                          : formatTimestamp(
-                            scannedAtTimestamp || Date.now(),
-                            detectedTimeZone
-                          )}
-                      </strong>
-                      .
-                    </p>
-                  </div>
                 )}
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2.5">
                   <button
-                    onClick={handleScanNext}
-                    className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition border border-slate-700 flex items-center justify-center gap-2"
+                    type="button"
+                    onClick={() => {
+                      if (openWindow) {
+                        openWindow("/inventory");
+                      } else {
+                        window.location.href = "/inventory";
+                      }
+                    }}
+                    className="py-2.5 px-4 rounded-2xl glass-l1 hover:bg-white/60 text-[#007AFF] font-bold text-xs transition border border-white/60 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                   >
-                    <RefreshCw className="w-4 h-4 text-emerald-400" />
-                    <span>Scan Next Evacuee Pass (Resume Clock)</span>
+                    <span>View in Shelter Stocks →</span>
                   </button>
 
                   <button
-                    onClick={() => setActiveTab("muster")}
-                    className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition border border-slate-800 flex items-center justify-center gap-1.5"
+                    type="button"
+                    onClick={handleScanNext}
+                    className="flex-1 py-2.5 rounded-2xl bg-[#007AFF] hover:bg-[#0066D6] text-white font-bold text-xs transition border border-blue-400 flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer active:scale-95"
                   >
-                    <span>View Who Entered</span>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <RefreshCw className="w-4 h-4 text-white" />
+                    <span>Scan Next Evacuee Pass</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("muster")}
+                    className="px-4 py-2.5 rounded-2xl glass-l1 hover:bg-white/60 text-slate-800 font-bold text-xs transition border border-white/60 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <span>Who Entered ({admissions.length})</span>
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
                   </button>
                 </div>
               </div>
@@ -2580,21 +3253,22 @@ export default function ScanPage() {
         </>
       ) : (
         /* MUSTER ROLL VIEW: WHO ENTERED THE SHELTER */
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="p-6 sm:p-7 rounded-[38px] glass-l2 border border-white/60 shadow-lg space-y-5 relative">
+          <div className="flex flex-wrap items-center justify-between gap-3 relative z-10">
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-base sm:text-lg font-black text-slate-950 flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#007AFF]" />
                 <span>Shelter Gate Muster Roll</span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600 font-medium">
                 Official list of evacuees admitted into {currentShelter?.name}
               </p>
             </div>
 
             <button
+              type="button"
               onClick={() => setActiveTab("scanner")}
-              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
+              className="px-4 py-2 rounded-2xl bg-[#007AFF] hover:bg-[#0066D6] text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 active:scale-95 transition cursor-pointer"
             >
               <Camera className="w-3.5 h-3.5" />
               <span>Back to Scanner</span>
@@ -2602,12 +3276,12 @@ export default function ScanPage() {
           </div>
 
           {/* Admission Summary Metrics Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative z-10">
+            <div className="p-3.5 rounded-2xl glass-l1 border border-white/60 shadow-inner">
+              <span className="text-[10px] text-slate-500 uppercase font-bold">
                 Total Entered
               </span>
-              <div className="text-lg font-black text-sky-400 mt-0.5">
+              <div className="text-lg font-black text-[#007AFF] mt-0.5 font-mono">
                 {totalShiftEvacuees} Persons
               </div>
               <span className="text-[10px] text-slate-500">
@@ -2615,31 +3289,31 @@ export default function ScanPage() {
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold">
+            <div className="p-3.5 rounded-2xl glass-l1 border border-white/60 shadow-inner">
+              <span className="text-[10px] text-slate-500 uppercase font-bold">
                 Infants Entered
               </span>
-              <div className="text-lg font-black text-pink-400 mt-0.5">
+              <div className="text-lg font-black text-pink-600 mt-0.5 font-mono">
                 {totalShiftInfants} Infants
               </div>
               <span className="text-[10px] text-slate-500">Under 5 years</span>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold">
+            <div className="p-3.5 rounded-2xl glass-l1 border border-white/60 shadow-inner">
+              <span className="text-[10px] text-slate-500 uppercase font-bold">
                 Elderly Entered
               </span>
-              <div className="text-lg font-black text-amber-400 mt-0.5">
+              <div className="text-lg font-black text-amber-700 mt-0.5 font-mono">
                 {totalShiftElderly} Senior Citizens
               </div>
               <span className="text-[10px] text-slate-500">Over 60 years</span>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold">
+            <div className="p-3.5 rounded-2xl glass-l1 border border-white/60 shadow-inner">
+              <span className="text-[10px] text-slate-500 uppercase font-bold">
                 Critical Triage (P1)
               </span>
-              <div className="text-lg font-black text-red-400 mt-0.5">
+              <div className="text-lg font-black text-rose-600 mt-0.5 font-mono">
                 {totalShiftCritical} Cases
               </div>
               <span className="text-[10px] text-slate-500">
@@ -2649,21 +3323,21 @@ export default function ScanPage() {
           </div>
 
           {/* Search Muster Input */}
-          <div>
+          <div className="relative z-10">
             <input
               type="text"
               value={searchMuster}
               onChange={(e) => setSearchMuster(e.target.value)}
               placeholder="Search by Head of Household, Hamlet, or Pass Token..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full glass-input rounded-2xl px-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 font-semibold focus:outline-none"
             />
           </div>
 
           {/* Muster Roster Table */}
           {filteredAdmissions.length === 0 ? (
-            <div className="p-8 rounded-xl bg-slate-950 text-center space-y-2 border border-slate-800">
-              <Users className="w-8 h-8 text-slate-600 mx-auto" />
-              <div className="text-xs font-semibold text-slate-400">
+            <div className="p-8 rounded-2xl glass-l1 text-center space-y-2 border border-white/60 relative z-10">
+              <Users className="w-8 h-8 text-slate-400 mx-auto" />
+              <div className="text-xs font-bold text-slate-700">
                 {searchMuster
                   ? "No matching admitted evacuees found."
                   : "No admissions recorded for this shelter yet."}
@@ -2674,38 +3348,40 @@ export default function ScanPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-3 relative z-10">
               {filteredAdmissions.map((adm) => (
                 <div
                   key={adm.id}
-                  className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="p-4 rounded-2xl glass-l1 border border-white/60 hover:bg-white/60 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-slate-900 shadow-xs"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-white text-xs">
+                      <span className="font-black text-slate-950 text-xs">
                         {adm.head_name}
                       </span>
-                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                      <span className="text-[10px] font-mono text-emerald-900 glass-l1 px-2 py-0.5 rounded-full border border-emerald-400/60 font-bold">
                         #{adm.household_token.toUpperCase()}
                       </span>
                       <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${adm.triage_level === "P1_CRITICAL"
-                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                        className={cn(
+                          "text-[9px] font-bold px-2 py-0.5 rounded-full glass-l1 border",
+                          adm.triage_level === "P1_CRITICAL"
+                            ? "bg-rose-500/15 text-rose-800 border-rose-400/50"
                             : adm.triage_level === "P2_URGENT"
-                              ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                              : "bg-sky-500/20 text-sky-400 border border-sky-500/30"
-                          }`}
+                            ? "bg-amber-500/15 text-amber-800 border-amber-400/50"
+                            : "bg-sky-500/15 text-sky-800 border-sky-400/50"
+                        )}
                       >
                         {adm.triage_code}
                       </span>
                     </div>
 
-                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <div className="text-[11px] text-slate-600 flex flex-wrap items-center gap-x-3 gap-y-1">
                       <span>
                         Origin: {adm.hamlet_name} (Ward {adm.ward_number || 1})
                       </span>
                       <span>•</span>
-                      <span className="text-sky-300 font-semibold">
+                      <span className="text-[#007AFF] font-bold">
                         {adm.total_members} Members ({adm.male_count}M •{" "}
                         {adm.female_count}F • {adm.child_under_five_count} Inf •{" "}
                         {adm.elderly_above_sixty_count} Eld)
@@ -2713,7 +3389,7 @@ export default function ScanPage() {
                       {adm.livestock_count > 0 && (
                         <>
                           <span>•</span>
-                          <span className="text-emerald-400 font-medium">
+                          <span className="text-emerald-700 font-bold">
                             {adm.livestock_count} Livestock
                           </span>
                         </>
@@ -2721,28 +3397,29 @@ export default function ScanPage() {
                     </div>
 
                     {adm.clinical_notes && (
-                      <div className="text-[10px] text-slate-400 italic">
+                      <div className="text-[10px] text-slate-500 italic">
                         Notes: {adm.clinical_notes}
                       </div>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-center">
-                    <div className="text-right text-[10px] text-emerald-400 font-mono bg-slate-900 px-2.5 py-1.5 rounded border border-slate-800 space-y-0.5">
-                      <div className="flex items-center gap-1 justify-end">
-                        <Clock className="w-3 h-3 text-emerald-400" />
+                    <div className="text-right text-[10px] text-emerald-800 font-mono glass-l1 px-3 py-1.5 rounded-xl border border-white/60 space-y-0.5">
+                      <div className="flex items-center gap-1 justify-end font-bold">
+                        <Clock className="w-3 h-3 text-emerald-600" />
                         <span>{formatClockTime(adm.qr_scanned_at || adm.admitted_at, detectedTimeZone)}</span>
                       </div>
                       {adm.arrival_duration_seconds != null && (
-                        <div className="text-[9px] text-sky-300 font-semibold">
+                        <div className="text-[9px] text-[#007AFF] font-bold">
                           Transit: {formatDuration(adm.arrival_duration_seconds)}
                         </div>
                       )}
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => handleUndoAdmission(adm.id)}
-                      className="p-1.5 rounded-lg bg-red-950/60 hover:bg-red-900/80 text-red-400 border border-red-500/30 transition text-xs"
+                      className="p-2 rounded-xl glass-l1 hover:bg-rose-500/20 text-rose-700 border border-rose-300/50 transition text-xs cursor-pointer shadow-xs"
                       title="Undo Admission (Deduct Headcount)"
                     >
                       <Undo2 className="w-3.5 h-3.5" />

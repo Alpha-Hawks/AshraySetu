@@ -1,0 +1,3339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Apple Liquid Glass (iOS 26 / macOS Tahoe) — Master Material System</title>
+  <style>
+    /* ============================================================
+       APPLE LIQUID GLASS (WWDC25/iOS 26) DESIGN TOKENS
+       ============================================================ */
+    :root {
+      /* Brand and geometry */
+      --brand: #007AFF;
+      --r-outer: 24px;
+      --pad: 6px;
+      --r-inner: calc(var(--r-outer) - var(--pad)); /* Concentric radius rule */
+      
+      /* Tunable liquid glass optical properties (Tuned to User Options) */
+      --lg-refract: 40;
+      --lg-bezel: 31px;
+      --lg-blur: 5px;
+      --lg-saturate: 100%;
+      --lg-dispersion: 4px;
+      --lg-specular: 1;
+      --lg-tint-color: 255 255 255;
+      --lg-tint-alpha: 0.08;
+      --merge-spacing: 16px;
+      
+      /* Adaptive tone defaults (Dark background default) */
+      --text-primary: #FFFFFF;
+      --text-secondary: rgba(255, 255, 255, 0.75);
+      --glass-tint: rgba(var(--lg-tint-color), var(--lg-tint-alpha));
+      --glass-border: rgba(255, 255, 255, 0.22);
+      --glass-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 16px 40px -6px rgba(0, 0, 0, 0.45);
+      --rim-light-top: rgba(255, 255, 255, var(--lg-specular));
+      --rim-light-bottom: rgba(255, 255, 255, 0.15);
+
+      /* Damped Apple spring bezier */
+      --spring-physics: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --fast-spring: cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+
+    /* Light Tone Adaptation (Triggered when glass scrolls over data-tone="light") */
+    [data-active-tone="light"] {
+      --text-primary: #1C1C1E;
+      --text-secondary: rgba(28, 28, 30, 0.70);
+      --glass-tint: rgba(255, 255, 255, 0.75);
+      --glass-border: rgba(0, 0, 0, 0.12);
+      --glass-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 12px 36px -6px rgba(0, 0, 0, 0.12);
+      --rim-light-top: rgba(255, 255, 255, 0.95);
+      --rim-light-bottom: rgba(0, 0, 0, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: #060911;
+      color: var(--text-primary);
+      overflow-x: hidden;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ============================================================
+       SCROLLING SHOWCASE CANVAS
+       ============================================================ */
+    .viewport-canvas {
+      position: relative;
+      width: 100%;
+      min-height: 450vh;
+      z-index: 1;
+    }
+
+    /* Background Stage Sections */
+    .stage-section {
+      position: relative;
+      min-height: 100vh;
+      padding: 7rem 2rem 5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    /* Section 1: Vibrant Watercolor Meadow with Fine Details */
+    .stage-meadow {
+      background: #faf7f2;
+      color: #1c1917;
+    }
+    .stage-meadow .bg-art {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+      filter: contrast(106%) saturate(115%);
+    }
+
+    /* Section 2: Dense Geometric & Typographic Radar */
+    .stage-dark-grid {
+      background: 
+        radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.15), transparent 60%),
+        linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px),
+        #0b1120;
+      background-size: 100% 100%, 36px 36px, 36px 36px, 100% 100%;
+    }
+
+    /* Section 3: High-Energy Vibrant Sunset Gradient */
+    .stage-gradient {
+      background: linear-gradient(135deg, #0284c7 0%, #4f46e5 35%, #e11d48 70%, #f59e0b 100%);
+    }
+
+    /* Section 4: Pure Monochrome High-Contrast Studio */
+    .stage-light-studio {
+      background: #f8fafc;
+      color: #0f172a;
+      background-image: 
+        radial-gradient(#cbd5e1 1.5px, transparent 1.5px),
+        radial-gradient(#e2e8f0 1.5px, #f8fafc 1.5px);
+      background-size: 32px 32px;
+      background-position: 0 0, 16px 16px;
+    }
+
+
+
+    .section-content {
+      position: relative;
+      z-index: 2;
+      max-width: 860px;
+      padding: 2.5rem;
+      border-radius: 32px;
+      background: rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .stage-meadow .section-content {
+      background: rgba(255, 255, 255, 0.65);
+      border-color: rgba(0, 0, 0, 0.08);
+      color: #1e293b;
+    }
+
+    h1.hero-title {
+      font-size: clamp(2.4rem, 6vw, 4.2rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 1.25rem;
+    }
+
+    p.hero-sub {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      font-weight: 500;
+      opacity: 0.9;
+      max-width: 680px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .test-pattern {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 2rem;
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+
+    .test-grid-card {
+      padding: 1rem 1.5rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* ============================================================
+       CORE LIQUID GLASS COMPONENT SPECIFICATION
+       ============================================================ */
+
+    /* 1. Base Glass Material */
+    .liquid-glass {
+      position: relative;
+      isolation: isolate;
+      border-radius: var(--r-outer);
+      background: color-mix(in oklab, var(--glass-tint) 100%, transparent);
+      box-shadow: 
+        inset 0 1px 1px 0 var(--rim-light-top),
+        inset 0 -1px 1px 0 var(--rim-light-bottom),
+        var(--glass-shadow);
+      border: 1px solid var(--glass-border);
+      transition: 
+        transform 0.35s var(--spring-physics),
+        box-shadow 0.3s ease,
+        background 0.3s ease,
+        border-color 0.3s ease;
+      color: var(--text-primary);
+    }
+
+    /* Progressive Refraction Layer (Chromium with SVG Filter, graceful fallback to blur) */
+    .liquid-glass::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      z-index: -2;
+      pointer-events: none;
+      backdrop-filter: var(--glass-lens-filter, none) blur(var(--lg-blur)) saturate(var(--lg-saturate));
+      -webkit-backdrop-filter: var(--glass-lens-filter, none) blur(var(--lg-blur)) saturate(var(--lg-saturate));
+    }
+
+    /* 2. Specular Light Following Pointer (--mx, --my) */
+    .liquid-glass::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0;
+      background: radial-gradient(
+        140px circle at var(--mx, 50%) var(--my, 50%),
+        rgba(255, 255, 255, calc(var(--lg-specular) * 0.45)) 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        transparent 75%
+      );
+      transition: opacity 0.25s ease;
+    }
+
+    .liquid-glass:hover::before {
+      opacity: 1;
+    }
+
+    /* Interactive Spring Scale on Touch/Click */
+    .liquid-glass.interactive {
+      cursor: pointer;
+      user-select: none;
+    }
+    .liquid-glass.interactive:hover {
+      box-shadow: 
+        inset 0 1.5px 1.5px 0 var(--rim-light-top),
+        inset 0 -1px 1px 0 var(--rim-light-bottom),
+        0 8px 30px -4px rgba(0, 0, 0, 0.35);
+    }
+    .liquid-glass.interactive:active {
+      transform: scale(0.96) !important;
+      transition-duration: 0.12s;
+    }
+
+    /* Concentric Inner Padding Rule: --r-inner = --r-outer - --pad */
+    .liquid-glass .glass-inner {
+      border-radius: var(--r-inner);
+      padding: var(--pad);
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Variants */
+    /* Variant: Clear (Media overlay, minimal blur, high refraction) */
+    .liquid-glass.variant-clear {
+      --lg-blur: 5px;
+      --lg-tint-alpha: 0.04;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Variant: Prominent (Apple System Blue Tinted Glass - Single primary action rule) */
+    .liquid-glass.variant-prominent {
+      background: color-mix(in oklab, #007AFF 78%, transparent 22%);
+      color: #FFFFFF !important;
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 
+        inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.8),
+        0 4px 18px rgba(0, 122, 255, 0.45);
+    }
+
+    /* ============================================================
+       10*10*10*10 RECTANGULAR LIQUID GLASS SLAB SPECIFICATION
+       ============================================================ */
+    .slab-stage-wrapper {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 1.5rem 0 2rem;
+      position: relative;
+      z-index: 20;
+    }
+
+    .hero-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #007AFF;
+      background: rgba(0, 122, 255, 0.12);
+      border: 1px solid rgba(0, 122, 255, 0.3);
+      padding: 0.3rem 0.85rem;
+      border-radius: 9999px;
+      margin-bottom: 0.85rem;
+      text-transform: uppercase;
+    }
+
+    .slab-controls-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .slab-preset-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .slab-preset-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .slab-pill {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: var(--text-primary);
+      padding: 0.35rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .stage-meadow .slab-pill {
+      background: rgba(0, 0, 0, 0.06);
+      border-color: rgba(0, 0, 0, 0.15);
+      color: #1e293b;
+    }
+
+    .slab-pill:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-1px);
+    }
+    .stage-meadow .slab-pill:hover {
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .slab-pill.active {
+      background: #007AFF;
+      color: #fff !important;
+      border-color: #38bdf8;
+      box-shadow: 0 2px 10px rgba(0, 122, 255, 0.35);
+    }
+
+    /* 10*10*10*10 Equilateral Rectangular Glass Slab */
+    .glass-slab-10cm {
+      width: 10cm;
+      height: 10cm;
+      min-width: 10cm;
+      min-height: 10cm;
+      max-width: calc(100vw - 2.5rem);
+      max-height: calc(100vw - 2.5rem);
+      aspect-ratio: 1 / 1;
+      border-radius: 10px; /* 10px * 10px * 10px * 10px symmetry */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      box-shadow: 
+        inset 0 1.5px 2px 0 rgba(255, 255, 255, var(--lg-specular, 1)),
+        inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.25),
+        0 12px 38px -6px rgba(0, 0, 0, 0.45),
+        0 4px 16px -2px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      background: color-mix(in oklab, var(--glass-tint) 100%, transparent);
+      z-index: 50;
+      transition: border-radius 0.25s ease, box-shadow 0.25s ease;
+      overflow: visible;
+    }
+
+    .glass-slab-10cm:active {
+      cursor: grabbing;
+    }
+
+    /* Edge Dimension Badges (Top: 10cm, Right: 10cm, Bottom: 10cm, Left: 10cm) */
+    .slab-edge-badge {
+      position: absolute;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 0.18rem 0.55rem;
+      border-radius: 9999px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      z-index: 10;
+      white-space: nowrap;
+    }
+    .slab-edge-top { top: 8px; left: 50%; transform: translateX(-50%); }
+    .slab-edge-bottom { bottom: 8px; left: 50%; transform: translateX(-50%); }
+    .slab-edge-left { left: 4px; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: center; }
+    .slab-edge-right { right: 4px; top: 50%; transform: translateY(-50%) rotate(90deg); transform-origin: center; }
+
+    /* Slab Inner Content & Readouts */
+    .slab-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.35rem;
+      padding: 1.25rem;
+      pointer-events: none;
+    }
+    .slab-badge-tag {
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.16);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+    }
+    .slab-main-title {
+      font-size: 1.2rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    .stage-meadow .slab-main-title {
+      color: #0f172a;
+    }
+    .slab-specs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.25rem 0.75rem;
+      font-size: 0.7rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text-secondary);
+      background: rgba(0, 0, 0, 0.35);
+      padding: 0.35rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      margin-top: 0.2rem;
+    }
+    .stage-meadow .slab-specs-grid {
+      background: rgba(255, 255, 255, 0.7);
+      border-color: rgba(0, 0, 0, 0.1);
+      color: #334155;
+    }
+    .slab-specs-grid strong {
+      color: #38bdf8;
+    }
+    .stage-meadow .slab-specs-grid strong {
+      color: #0284c7;
+    }
+    .slab-drag-hint {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.85);
+      margin-top: 0.25rem;
+    }
+    .stage-meadow .slab-drag-hint {
+      color: #475569;
+    }
+
+    /* =========================================
+       LIQUID GLASS CARD
+       Refraction: 40
+       Bezel Width: 31px
+       Lens Blur: 5px
+       ========================================= */
+
+    .liquid-glass-card {
+      --glass-refraction: 40;
+      --bezel-width: 31px;
+      --lens-blur: 5px;
+
+      position: relative;
+      isolation: isolate;
+
+      width: 100%;
+      min-height: 180px;
+
+      border-radius: 32px;
+      overflow: hidden;
+
+      /* Glass body */
+      background:
+        linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.14),
+          rgba(255, 255, 255, 0.055)
+        );
+
+      /* Lens blur */
+      backdrop-filter:
+        blur(var(--lens-blur))
+        saturate(160%)
+        brightness(108%);
+
+      -webkit-backdrop-filter:
+        blur(var(--lens-blur))
+        saturate(160%)
+        brightness(108%);
+
+      /* Optical bezel */
+      border: 1.5px solid rgba(255, 255, 255, 0.40);
+
+      /* Depth + optical edges */
+      box-shadow:
+        0 18px 45px -10px rgba(0, 0, 0, 0.35),
+
+        /* Top optical edge */
+        inset 0 1.5px 2px
+          rgba(255, 255, 255, 0.85),
+
+        /* Bottom optical edge */
+        inset 0 -1.5px 2px
+          rgba(255, 255, 255, 0.22),
+
+        /* Internal glass diffusion */
+        inset 0 0 48px
+          rgba(255, 255, 255, 0.08);
+
+      transition:
+        transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1),
+        background 260ms ease;
+    }
+
+
+    /* =========================================
+       REFRACTION / SPECULAR LIGHT
+       ========================================= */
+
+    .liquid-glass-card::before {
+      content: "";
+
+      position: absolute;
+      inset: 0;
+
+      pointer-events: none;
+      z-index: -1;
+
+      border-radius: inherit;
+
+      background:
+        radial-gradient(
+          circle at 30% 0%,
+          rgba(255, 255, 255, 0.42) 0%,
+          rgba(255, 255, 255, 0.16) 18%,
+          transparent 55%
+        );
+
+      opacity: calc(var(--glass-refraction) * 0.015);
+
+      filter: blur(0.5px);
+    }
+
+
+    /* =========================================
+       BEZEL / EDGE LIGHT
+       ========================================= */
+
+    .liquid-glass-card::after {
+      content: "";
+
+      position: absolute;
+      inset: 0;
+
+      pointer-events: none;
+
+      border-radius: inherit;
+
+      padding: 1px;
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.65),
+          rgba(255, 255, 255, 0.12) 35%,
+          rgba(255, 255, 255, 0.05) 65%,
+          rgba(255, 255, 255, 0.28)
+        );
+
+      /*
+        Creates an optical border instead of
+        a simple solid white border.
+      */
+      -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+
+      opacity: 0.75;
+    }
+
+
+    /* =========================================
+       CONTENT
+       ========================================= */
+
+    .glass-content {
+      position: relative;
+
+      padding: var(--bezel-width);
+
+      z-index: 2;
+
+      color: white;
+    }
+
+    .glass-content h3 {
+      margin: 0 0 10px;
+
+      font-size: 22px;
+      font-weight: 600;
+
+      letter-spacing: -0.02em;
+    }
+
+    .glass-content p {
+      margin: 0;
+
+      font-size: 14px;
+      line-height: 1.6;
+
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+
+    /* =========================================
+       HOVER
+       ========================================= */
+
+    .liquid-glass-card:hover {
+      transform: translateY(-4px);
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.18),
+          rgba(255, 255, 255, 0.07)
+        );
+
+      box-shadow:
+        0 25px 55px -8px rgba(0, 0, 0, 0.42),
+
+        inset 0 2px 3px
+          rgba(255, 255, 255, 0.95),
+
+        inset 0 -1.5px 3px
+          rgba(255, 255, 255, 0.28),
+
+        inset 0 0 55px
+          rgba(255, 255, 255, 0.12);
+    }
+
+
+    /* =========================================
+       PRESS
+       ========================================= */
+
+    .liquid-glass-card:active {
+      transform: scale(0.985);
+    }
+
+
+    /* =========================================
+       REDUCED MOTION
+       ========================================= */
+
+    @media (prefers-reduced-motion: reduce) {
+      .liquid-glass-card {
+        transition: none;
+      }
+
+      .liquid-glass-card:hover {
+        transform: none;
+      }
+    }
+
+    /* ============================================================
+       COMPONENT 1: MINIMIZING TOP TAB BAR WITH SCROLL-EDGE BLUR
+       ============================================================ */
+    .tab-bar-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      padding: 1.25rem 1rem 1rem;
+      pointer-events: none;
+      /* Scroll Edge Fade */
+      background: linear-gradient(to bottom, rgba(6, 9, 17, 0.6) 0%, rgba(6, 9, 17, 0) 100%);
+      mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+      transition: transform 0.4s var(--fast-spring);
+    }
+
+    .tab-bar-container.minimized {
+      transform: translateY(-8px);
+    }
+
+    .glass-tab-bar {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 9999px;
+      --r-outer: 9999px;
+      max-width: 95vw;
+    }
+
+    .tab-item {
+      appearance: none;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.45rem 0.95rem;
+      border-radius: 9999px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all 0.25s var(--fast-spring);
+      outline: none;
+    }
+
+    .tab-item:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .tab-item.active {
+      color: #FFFFFF;
+      background: #007AFF;
+      box-shadow: 0 2px 10px rgba(0, 122, 255, 0.4);
+    }
+
+    /* Tab bar minimize state hides text, keeps icons */
+    .tab-bar-container.minimized .tab-text {
+      display: none;
+    }
+    .tab-bar-container.minimized .tab-item {
+      padding: 0.45rem;
+    }
+
+    /* ============================================================
+       COMPONENT 2: MERGING GLASS TOOLBAR & MORPHING 4TH BUTTON
+       ============================================================ */
+    .glass-group-wrapper {
+      margin: 2.5rem 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* SVG Gooey Filter Container: fused liquid droplets */
+    .glass-blob-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: var(--merge-spacing);
+      padding: 0.5rem;
+      filter: url(#gooey-merge);
+      transition: all 0.4s var(--spring-physics);
+    }
+
+    .blob-btn {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: color-mix(in oklab, var(--glass-tint) 100%, white 10%);
+      box-shadow: 
+        inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.8),
+        0 4px 16px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-primary);
+      outline: none;
+      transition: transform 0.3s var(--spring-physics), opacity 0.3s ease;
+      touch-action: manipulation;
+    }
+
+    .blob-btn:active {
+      transform: scale(0.90);
+    }
+
+    /* 4th Morphing Button */
+    .blob-btn.morph-target {
+      overflow: hidden;
+      transition: all 0.4s var(--spring-physics);
+    }
+    .blob-btn.morph-target.collapsed {
+      width: 0;
+      height: 58px;
+      opacity: 0;
+      margin: 0;
+      padding: 0;
+      transform: scale(0.1);
+      pointer-events: none;
+    }
+
+    /* Foreground Unfiltered Icons Layer (Prevents SVG gooey blur on icons) */
+    .blob-icon {
+      width: 22px;
+      height: 22px;
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       COMPONENT 3: LIQUID GLASS SLIDER
+       ============================================================ */
+    .glass-slider-box {
+      width: 100%;
+      max-width: 440px;
+      padding: 1.5rem 1.8rem;
+      border-radius: 28px;
+      margin: 1.5rem auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .slider-track-wrap {
+      position: relative;
+      width: 100%;
+      height: 38px;
+      display: flex;
+      align-items: center;
+    }
+
+    .slider-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.18);
+      border-radius: 9999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .slider-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 50%;
+      background: linear-gradient(90deg, #007AFF, #38bdf8);
+      border-radius: 9999px;
+    }
+
+    .slider-thumb {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: grab;
+      touch-action: none;
+      z-index: 10;
+      display: grid;
+      place-items: center;
+      border: 1.5px solid rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.25);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(8px) saturate(180%);
+      -webkit-backdrop-filter: blur(8px) saturate(180%);
+      transition: width 0.2s var(--fast-spring), height 0.2s var(--fast-spring);
+    }
+    .slider-thumb:active,
+    .slider-thumb.dragging {
+      cursor: grabbing;
+      width: 42px;
+      height: 42px;
+      background: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.45);
+    }
+
+    /* ============================================================
+       COMPONENT 4: PROMINENT & SECONDARY BUTTONS
+       ============================================================ */
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .btn-action {
+      padding: 0.85rem 1.85rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: none;
+      outline: none;
+    }
+    /* ============================================================
+       COMPONENT 7: SEPARATE ROAMING RECTANGULAR SIMULATION SHAPE
+       ============================================================ */
+    .sim-rect-glass {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 110;
+      width: 280px;
+      height: 180px;
+      border-radius: 18px;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      isolation: isolate;
+      border: 1.25px solid rgba(255, 255, 255, 0.45);
+      background: color-mix(in oklab, var(--sim-tint, rgba(255, 255, 255, 0.08)) 100%, transparent);
+      box-shadow: 
+        inset 0 1.5px 2px 0 rgba(255, 255, 255, var(--sim-specular, 1)),
+        inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.35),
+        0 16px 48px -6px rgba(0, 0, 0, 0.55),
+        0 4px 16px -2px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 0.85rem 1rem;
+      transform: translate3d(120px, 160px, 0);
+      will-change: transform, width, height, border-radius;
+      transition: width 0.2s ease, height 0.2s ease, border-radius 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .sim-rect-glass:active {
+      cursor: grabbing;
+      box-shadow: 
+        inset 0 2px 3px 0 rgba(255, 255, 255, 1),
+        inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.4),
+        0 24px 60px -8px rgba(0, 0, 0, 0.7);
+    }
+
+    /* Dedicated Refraction Layer with Dynamic SVG Filter Target */
+    .sim-rect-glass::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      z-index: -2;
+      pointer-events: none;
+      backdrop-filter: url(#lg-sim-filter) blur(var(--sim-blur, 5px)) saturate(var(--sim-sat, 100%));
+      -webkit-backdrop-filter: url(#lg-sim-filter) blur(var(--sim-blur, 5px)) saturate(var(--sim-sat, 100%));
+    }
+
+    /* Specular Follow Highlight on Simulation Shape */
+    .sim-rect-glass::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      z-index: -1;
+      pointer-events: none;
+      background: radial-gradient(
+        160px circle at var(--sim-mx, 50%) var(--sim-my, 50%),
+        rgba(255, 255, 255, calc(var(--sim-specular, 1) * 0.55)) 0%,
+        rgba(255, 255, 255, 0.08) 50%,
+        transparent 75%
+      );
+      transition: opacity 0.2s ease;
+    }
+
+    /* Simulation Shape Inner UI */
+    .sim-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .sim-status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #fff;
+    }
+
+    .sim-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: simPulse 2s infinite ease-in-out;
+    }
+    .sim-dot.paused {
+      background: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b;
+      animation: none;
+    }
+
+    @keyframes simPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .sim-mini-actions {
+      display: flex;
+      gap: 0.3rem;
+    }
+
+    .sim-icon-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-size: 0.7rem;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .sim-icon-btn:hover {
+      background: rgba(255, 255, 255, 0.28);
+      transform: scale(1.08);
+    }
+
+    .sim-center-content {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      pointer-events: none;
+    }
+
+    .sim-title {
+      font-size: 0.85rem;
+      font-weight: 900;
+      letter-spacing: -0.01em;
+      color: #fff;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+
+    .sim-telemetry {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.65rem;
+      color: #38bdf8;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .sim-bottom-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.62rem;
+      color: rgba(255, 255, 255, 0.8);
+      pointer-events: none;
+    }
+
+    .sim-tag-pill {
+      background: rgba(0, 0, 0, 0.45);
+      padding: 0.12rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Floating Customization Panel for Simulation Shape */
+    .sim-customizer-panel {
+      position: fixed;
+      left: 1.25rem;
+      bottom: 5.5rem;
+      width: 360px;
+      max-width: calc(100vw - 2.5rem);
+      max-height: 84vh;
+      overflow-y: auto;
+      border-radius: 28px;
+      padding: 1.25rem;
+      z-index: 125;
+      --r-outer: 28px;
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+      transition: transform 0.35s var(--fast-spring), opacity 0.25s ease;
+    }
+
+    .sim-customizer-panel.collapsed {
+      transform: translateX(calc(-100% - 2rem));
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    .sim-toggle-pill-btn {
+      position: fixed;
+      left: 1.25rem;
+      bottom: 1.25rem;
+      z-index: 130;
+      height: 48px;
+      padding: 0 1.2rem;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: #007AFF;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(0, 122, 255, 0.4);
+      font-size: 0.82rem;
+      font-weight: 700;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .sim-toggle-pill-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(0, 122, 255, 0.55);
+    }
+
+    .sim-control-group {
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 0.6rem 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .sim-control-title {
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #38bdf8;
+    }
+
+    .sim-mode-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.35rem;
+    }
+
+    .sim-mode-btn {
+      padding: 0.35rem 0.4rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+    .sim-mode-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+    .sim-mode-btn.active {
+      background: #007AFF;
+      border-color: #38bdf8;
+      box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
+    }
+
+    .sim-tint-row {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    .sim-tint-chip {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .sim-tint-chip:hover {
+      transform: scale(1.15);
+    }
+    .sim-tint-chip.active {
+      border-color: #fff;
+      box-shadow: 0 0 0 2px #007AFF;
+      transform: scale(1.15);
+    }
+
+    /* ============================================================
+       CUSTOMIZED CODE EXPORTER STYLES (Options Integration)
+       ============================================================ */
+    .sim-preset-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.35rem;
+      margin-top: 0.2rem;
+    }
+
+    .sim-preset-btn {
+      padding: 0.35rem 0.45rem;
+      font-size: 0.66rem;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+    .sim-preset-btn:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: #38bdf8;
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .sim-code-group {
+      background: rgba(8, 12, 24, 0.82) !important;
+      border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.12) !important;
+      gap: 0.55rem;
+    }
+
+    .sim-code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sim-copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.25rem 0.65rem;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      border-radius: 6px;
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .sim-copy-btn:hover {
+      background: #007AFF;
+      color: #fff;
+      border-color: #38bdf8;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+    }
+    .sim-copy-btn.copied {
+      background: #10b981 !important;
+      border-color: #34d399 !important;
+      color: #fff !important;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.6) !important;
+    }
+
+    .sim-code-tabs {
+      display: flex;
+      gap: 0.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      padding-bottom: 0.35rem;
+    }
+
+    .sim-code-tab {
+      flex: 1;
+      padding: 0.28rem 0.2rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.18s ease;
+    }
+    .sim-code-tab:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+    .sim-code-tab.active {
+      background: rgba(56, 189, 248, 0.24);
+      border-color: rgba(56, 189, 248, 0.6);
+      color: #38bdf8;
+    }
+
+    .sim-code-box-wrapper {
+      position: relative;
+      border-radius: 8px;
+      background: #040711;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      max-height: 185px;
+      overflow-y: auto;
+    }
+
+    .sim-code-pre {
+      margin: 0;
+      padding: 0.65rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.62rem;
+      line-height: 1.45;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      user-select: all;
+    }
+
+    .sim-open-modal-btn {
+      width: 100%;
+      padding: 0.48rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: linear-gradient(135deg, rgba(0, 122, 255, 0.3) 0%, rgba(124, 111, 230, 0.3) 100%);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+    .sim-open-modal-btn:hover {
+      background: linear-gradient(135deg, rgba(0, 122, 255, 0.5) 0%, rgba(124, 111, 230, 0.5) 100%);
+      border-color: rgba(56, 189, 248, 0.6);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+    }
+
+    /* Fullscreen / Inset Code Modal */
+    .glass-code-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 250;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .glass-code-modal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .glass-code-dialog {
+      background: rgba(15, 23, 42, 0.94);
+      border: 1.5px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), inset 0 1.5px 2px rgba(255, 255, 255, 0.35);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 820px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: scale(0.95);
+      transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+    .glass-code-modal.active .glass-code-dialog {
+      transform: scale(1);
+    }
+
+    .glass-code-dialog-header {
+      padding: 1rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .glass-code-dialog-body {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow-y: auto;
+    }
+
+    .glass-code-dialog-pre {
+      margin: 0;
+      padding: 1rem;
+      background: #030712;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.72rem;
+      line-height: 1.5;
+      color: #f8fafc;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 380px;
+      overflow-y: auto;
+      user-select: all;
+    }
+
+    /* ============================================================
+       ACCESSIBILITY & FALLBACK SYSTEM
+       ============================================================ */
+
+    /* 1. Reduce Transparency: High-opacity surface, no backdrop filter */
+    @media (prefers-reduced-transparency: reduce) {
+      .liquid-glass,
+      .liquid-glass::after,
+      .blob-btn {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: rgba(24, 32, 47, 0.95) !important;
+      }
+      [data-active-tone="light"] .liquid-glass {
+        background: rgba(245, 245, 250, 0.97) !important;
+      }
+    }
+
+    /* 2. Reduce Motion: Disable spring overshoot and morph transitions */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.001s !important;
+        transition-duration: 0.001s !important;
+      }
+    }
+
+    /* 3. Increased Contrast: Visible 1.5px solid border, prominent text */
+    @media (prefers-contrast: more) {
+      .liquid-glass,
+      .blob-btn {
+        border: 1.5px solid currentColor !important;
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       SVG FILTER DECK: DISPLACEMENT LENS + GOOEY BLOB MERGE
+       ============================================================ -->
+  <svg style="position: absolute; width: 0; height: 0; pointer-events: none;" aria-hidden="true">
+    <defs>
+      <!-- Gooey Filter for Organic Glass Droplet Merging -->
+      <filter id="gooey-merge">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+        <feColorMatrix in="blur" mode="matrix" values="
+          1 0 0 0 0
+          0 1 0 0 0
+          0 0 1 0 0
+          0 0 0 20 -9" result="gooey" />
+        <feComposite in="SourceGraphic" in2="gooey" operator="atop" />
+      </filter>
+
+      <!-- Chromatic Dispersion Refraction Filter (Dynamic Canvas Map Target) -->
+      <filter id="lg-refract-filter" primitiveUnits="objectBoundingBox" x="-20%" y="-20%" width="140%" height="140%">
+        <!-- Image normal map generated by JavaScript Canvas SDF -->
+        <feImage id="fe-lens-map" href="" x="0" y="0" width="1" height="1" result="lensMap" preserveAspectRatio="none" />
+        
+        <!-- Red Channel Refraction (40 Power + 4px Chromatic Fringe) -->
+        <feDisplacementMap id="feDispR" in="SourceGraphic" in2="lensMap" scale="0.088" xChannelSelector="R" yChannelSelector="G" result="rDisp" />
+        <feColorMatrix in="rDisp" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="rChannel" />
+        
+        <!-- Green Channel Refraction -->
+        <feDisplacementMap id="feDispG" in="SourceGraphic" in2="lensMap" scale="0.080" xChannelSelector="R" yChannelSelector="G" result="gDisp" />
+        <feColorMatrix in="gDisp" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="gChannel" />
+        
+        <!-- Blue Channel Refraction -->
+        <feDisplacementMap id="feDispB" in="SourceGraphic" in2="lensMap" scale="0.072" xChannelSelector="R" yChannelSelector="G" result="bDisp" />
+        <feColorMatrix in="bDisp" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="bChannel" />
+        
+        <!-- Combine RGB Chromatic Aberration -->
+        <feBlend in="rChannel" in2="gChannel" mode="screen" result="rgCombined" />
+        <feBlend in="rgCombined" in2="bChannel" mode="screen" result="chromaticRefraction" />
+      </filter>
+
+      <!-- Dedicated 10*10*10*10 Slab Refraction Filter -->
+      <filter id="lg-slab-filter" primitiveUnits="objectBoundingBox" x="-20%" y="-20%" width="140%" height="140%">
+        <feImage id="fe-slab-lens-map" href="" x="0" y="0" width="1" height="1" result="slabLensMap" preserveAspectRatio="none" />
+        <feDisplacementMap id="feSlabDispR" in="SourceGraphic" in2="slabLensMap" scale="0.088" xChannelSelector="R" yChannelSelector="G" result="rDisp" />
+        <feColorMatrix in="rDisp" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="rChannel" />
+        <feDisplacementMap id="feSlabDispG" in="SourceGraphic" in2="slabLensMap" scale="0.080" xChannelSelector="R" yChannelSelector="G" result="gDisp" />
+        <feColorMatrix in="gDisp" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="gChannel" />
+        <feDisplacementMap id="feSlabDispB" in="SourceGraphic" in2="slabLensMap" scale="0.072" xChannelSelector="R" yChannelSelector="G" result="bDisp" />
+        <feColorMatrix in="bDisp" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="bChannel" />
+        <feBlend in="rChannel" in2="gChannel" mode="screen" result="rgCombined" />
+        <feBlend in="rgCombined" in2="bChannel" mode="screen" result="chromaticRefraction" />
+      </filter>
+
+      <!-- Dedicated Refraction Filter for Separate Roaming Simulation Shape -->
+      <filter id="lg-sim-filter" primitiveUnits="objectBoundingBox" x="-20%" y="-20%" width="140%" height="140%">
+        <feImage id="fe-sim-lens-map" href="" x="0" y="0" width="1" height="1" result="simLensMap" preserveAspectRatio="none" />
+        <feDisplacementMap id="feSimDispR" in="SourceGraphic" in2="simLensMap" scale="0.088" xChannelSelector="R" yChannelSelector="G" result="rDisp" />
+        <feColorMatrix in="rDisp" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="rChannel" />
+        <feDisplacementMap id="feSimDispG" in="SourceGraphic" in2="simLensMap" scale="0.080" xChannelSelector="R" yChannelSelector="G" result="gDisp" />
+        <feColorMatrix in="gDisp" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="gChannel" />
+        <feDisplacementMap id="feSimDispB" in="SourceGraphic" in2="simLensMap" scale="0.072" xChannelSelector="R" yChannelSelector="G" result="bDisp" />
+        <feColorMatrix in="bDisp" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="bChannel" />
+        <feBlend in="rChannel" in2="gChannel" mode="screen" result="rgCombined" />
+        <feBlend in="rgCombined" in2="bChannel" mode="screen" result="chromaticRefraction" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- ============================================================
+       COMPONENT 1: MINIMIZING TOP TAB BAR (SCROLL-EDGE BLUR)
+       ============================================================ -->
+  <div class="tab-bar-container" id="tabBarContainer">
+    <nav class="liquid-glass glass-tab-bar interactive" aria-label="Global Navigation">
+      <button class="tab-item active" id="nav10cm" aria-label="10x10 Rectangular Liquid Glass">
+        <svg class="blob-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+        </svg>
+        <span class="tab-text">10×10 Slab</span>
+      </button>
+
+      <button class="tab-item" id="navSim" aria-label="Roaming Simulation Shape">
+        <svg class="blob-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
+        </svg>
+        <span class="tab-text">Roaming Sim</span>
+      </button>
+
+
+
+      <button class="tab-item" aria-label="Overview Section">
+        <svg class="blob-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        </svg>
+        <span class="tab-text">Overview</span>
+      </button>
+
+      <button class="tab-item" aria-label="Optics & Refraction">
+        <svg class="blob-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/>
+        </svg>
+        <span class="tab-text">Snell Optics</span>
+      </button>
+
+      <button class="tab-item" aria-label="Fluid Blobs">
+        <svg class="blob-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        <span class="tab-text">Fluid Merge</span>
+      </button>
+
+      <button class="tab-item" id="btnToggleMorph" aria-label="Toggle Morphing Item">
+        <svg class="blob-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        <span class="tab-text">Morph +</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ============================================================
+       SCROLLING CONTENT BACKDROPS (DEMONSTRATES EDGE REFRACTION)
+       ============================================================ -->
+  <main class="viewport-canvas">
+    
+    <!-- Stage 1: Coastal Disaster Operations & Evacuation (Light Tone) -->
+    <section class="stage-section stage-meadow" data-tone="light" id="sec-meadow">
+      <img 
+        class="bg-art" 
+        src="/disaster-bg.jpg" 
+        alt="Coastal Disaster Operations & Evacuation Operations"
+      />
+      <div class="section-content">
+        <div class="hero-badge-pill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+          </svg>
+          10*10*10*10 RECTANGULAR SPECIFICATION
+        </div>
+        <h1 class="hero-title">Apple Liquid Glass</h1>
+        <p class="hero-sub">
+          Configured with Refraction: <strong>40</strong>, Bezel: <strong>31px</strong>, Blur: <strong>5px</strong>, Saturation: <strong>100%</strong>, Specular: <strong>1.0</strong>, Chromatic Fringe: <strong>4px</strong>.
+        </p>
+
+        <!-- 10*10*10*10 Rectangular Liquid Glass Slab Hero Unit -->
+        <div class="slab-stage-wrapper">
+          <div class="slab-controls-toolbar">
+            <span class="slab-preset-label">Shape Geometry:</span>
+            <div class="slab-preset-buttons">
+              <button class="slab-pill active" id="btnRadius10" data-radius="10">10*10*10*10 Rect (10px)</button>
+              <button class="slab-pill" id="btnRadius28" data-radius="28">10cm Squircle (28px)</button>
+              <button class="slab-pill" id="btnRadius0" data-radius="0">Sharp 10cm (0px)</button>
+              <button class="slab-pill" id="btnResetSlab">Reset Center</button>
+            </div>
+          </div>
+
+          <button id="btn" class="liquid-glass glass glass-slab-10cm interactive" aria-label="10cm by 10cm Rectangular Liquid Glass Element">
+            <!-- 4 Edge Dimension Badges (Top: 10cm, Right: 10cm, Bottom: 10cm, Left: 10cm) -->
+            <span class="slab-edge-badge slab-edge-top">Top: 10cm</span>
+            <span class="slab-edge-badge slab-edge-right">Right: 10cm</span>
+            <span class="slab-edge-badge slab-edge-bottom">Bottom: 10cm</span>
+            <span class="slab-edge-badge slab-edge-left">Left: 10cm</span>
+            
+            <div class="slab-content">
+              <span class="slab-badge-tag">10cm × 10cm × 10cm × 10cm</span>
+              <h3 class="slab-main-title">LIQUID GLASS</h3>
+              <div class="slab-specs-grid">
+                <div>Refract: <strong id="readoutRefract">40</strong></div>
+                <div>Bezel: <strong id="readoutBezel">31px</strong></div>
+                <div>Blur: <strong id="readoutBlur">5px</strong></div>
+                <div>Saturate: <strong id="readoutSat">100%</strong></div>
+                <div>Specular: <strong id="readoutSpec">1.0</strong></div>
+                <div>Fringe: <strong id="readoutDisp">4px</strong></div>
+              </div>
+              <div class="slab-drag-hint">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polyline points="5 9 2 12 5 15"></polyline>
+                  <polyline points="9 5 12 2 15 5"></polyline>
+                  <polyline points="15 19 12 22 9 19"></polyline>
+                  <polyline points="19 9 22 12 19 15"></polyline>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <line x1="12" y1="2" x2="12" y2="22"></line>
+                </svg>
+                <span>Drag over flowers, grid & text</span>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <!-- Component 2: Merging Toolbar (3 Icons + Morphing 4th) -->
+        <div class="glass-group-wrapper">
+          <div class="glass-blob-container" id="blobGroup" title="Items closer than 16px melt into one fluid capsule">
+            <button class="blob-btn" aria-label="Camera Action">
+              <svg class="blob-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            </button>
+            <button class="blob-btn" aria-label="Microphone Action">
+              <svg class="blob-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            </button>
+            <button class="blob-btn" aria-label="AirDrop Action">
+              <svg class="blob-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+            </button>
+            <!-- 4th Morphed Item -->
+            <button class="blob-btn morph-target" id="morphedBtn" aria-label="Morphed Satellite Radio">
+              <svg class="blob-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
+            </button>
+          </div>
+          <small style="opacity: 0.75; font-size: 0.78rem;">
+            ↑ SVG Gooey Alpha-Threshold: shapes fuse seamlessly within <code>--merge-spacing</code>
+          </small>
+        </div>
+
+        <!-- Component 3: Liquid Glass Slider -->
+        <div class="liquid-glass glass-slider-box" id="glassSliderBox">
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700;">
+            <span>Refractive Aperture</span>
+            <span id="sliderValueText" style="color: #007AFF;">65%</span>
+          </div>
+          <div class="slider-track-wrap" id="sliderTrackWrap">
+            <div class="slider-track">
+              <div class="slider-fill" id="sliderFill" style="width: 65%;"></div>
+            </div>
+            <div class="slider-thumb" id="sliderThumb" style="left: 65%;">
+              <div style="width: 6px; height: 6px; border-radius: 50%; background: #007AFF;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Component 4: Prominent & Secondary Button Pair -->
+        <div class="button-row">
+          <button class="liquid-glass variant-prominent btn-action interactive" aria-label="Confirm Purchase">
+            <span>Get Liquid Glass</span>
+            <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+
+          <button class="liquid-glass btn-action interactive" aria-label="Inspect Specification">
+            <span>Learn More</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage 2: Geometric Radar Grid (Dark Tone) -->
+    <section class="stage-section stage-dark-grid" data-tone="dark" id="sec-grid">
+      <div class="section-content">
+        <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem;">
+          Snell's Law Curvature
+        </h2>
+        <p style="max-width: 620px; margin: 0 auto; opacity: 0.85;">
+          Notice how the white coordinate grid lines behind the glass curve inward along the perimeter normals. 
+          The center height gradient is zero, preserving text legibility.
+        </p>
+
+        <div class="test-pattern">
+          <div class="test-grid-card">
+            <div>SDF BEZEL PROFILE</div>
+            <div style="font-size: 1.25rem; font-weight: bold; color: #38bdf8;">h = (1 - u⁴)¹ᐟ⁴</div>
+          </div>
+          <div class="test-grid-card">
+            <div>NORMAL DERIVATIVE</div>
+            <div style="font-size: 1.25rem; font-weight: bold; color: #38bdf8;">dh/dd = u³ / [w(1-u⁴)³ᐟ⁴]</div>
+          </div>
+          <div class="test-grid-card">
+            <div>SATURATION BOOST</div>
+            <div style="font-size: 1.25rem; font-weight: bold; color: #38bdf8;">180% (P3 Color)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage 3: High Energy Sunset Gradient (Dark Tone) -->
+    <section class="stage-section stage-gradient" data-tone="dark" id="sec-gradient">
+      <div class="section-content">
+        <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem;">
+          Reflecting Surrounding Color
+        </h2>
+        <p style="max-width: 620px; margin: 0 auto; opacity: 0.9;">
+          Pure OKLAB translucent compositing: the glass reflects ambient sunset magenta, cyan, and amber without looking muddy.
+        </p>
+      </div>
+    </section>
+
+    <!-- Stage 4: Light Studio Surface (Light Tone) -->
+    <section class="stage-section stage-light-studio" data-tone="light" id="sec-studio">
+      <div class="section-content">
+        <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem;">
+          Adaptive Contrast Over Light
+        </h2>
+        <p style="max-width: 620px; margin: 0 auto; opacity: 0.85;">
+          The IntersectionObserver automatically flips the glass styling to iOS Light tint tokens with WCAG AAA readability.
+        </p>
+      </div>
+    </section>
+
+
+  </main>
+
+  <!-- ============================================================
+       COMPONENT 8: SEPARATE RECTANGULAR SIMULATION SHAPE (ROAMS ALL AROUND)
+       ============================================================ -->
+  <div class="sim-rect-glass" id="simRect" aria-label="Autonomous Roaming Liquid Glass Simulation Shape">
+    <!-- Top Bar with status & quick actions -->
+    <div class="sim-top-row">
+      <div class="sim-status-chip">
+        <span class="sim-dot" id="simDot"></span>
+        <span id="simStatus">BOUNCING</span>
+      </div>
+      <div class="sim-mini-actions">
+        <button class="sim-icon-btn" id="btnSimPlayPause" title="Play/Pause Movement">⏸</button>
+        <button class="sim-icon-btn" id="btnSimCenter" title="Center on Screen">🎯</button>
+        <button class="sim-icon-btn" id="btnSimOpenCode" title="Get Customized Code">&lt;/&gt;</button>
+        <button class="sim-icon-btn" id="btnSimOpenSettings" title="Customization Options">⚙</button>
+      </div>
+    </div>
+
+    <!-- Center Readout -->
+    <div class="sim-center-content">
+      <div class="sim-title">ROAMING GLASS SLAB</div>
+      <div class="sim-telemetry" id="simTelemetry">X: 120px · Y: 160px · 1.0x</div>
+    </div>
+
+    <!-- Bottom Readout -->
+    <div class="sim-bottom-row">
+      <span class="sim-tag-pill" id="simDimsBadge">280 × 180 px</span>
+      <span class="sim-tag-pill" id="simRadiusBadge">Radius: 18px</span>
+    </div>
+  </div>
+
+  <!-- Toggle Button for Simulation Customizer -->
+  <button class="sim-toggle-pill-btn" id="btnSimTunerToggle" aria-label="Toggle Shape Simulation Customization Panel">
+    <span>🎛</span>
+    <span>Sim Customizer</span>
+  </button>
+
+  <!-- Simulation Customization Panel -->
+  <aside class="liquid-glass sim-customizer-panel" id="simCustomizerPanel" aria-label="Simulation Shape Customization Options">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 0.5rem;">
+      <span style="font-weight: 800; font-size: 0.85rem; letter-spacing: 0.04em;">SIM SHAPE OPTIONS</span>
+      <button style="background: none; border: none; color: inherit; cursor: pointer; font-size: 1.1rem;" id="btnCloseSimTuner">✕</button>
+    </div>
+
+    <!-- Motion Controls -->
+    <div class="sim-control-group">
+      <span class="sim-control-title">Motion Pattern</span>
+      <div class="sim-mode-grid">
+        <button class="sim-mode-btn active" data-mode="bounce">🎾 Bounce (DVD)</button>
+        <button class="sim-mode-btn" data-mode="orbit">♾️ Figure-8</button>
+        <button class="sim-mode-btn" data-mode="follow">🧲 Follow Mouse</button>
+        <button class="sim-mode-btn" data-mode="static">🛑 Manual / Static</button>
+      </div>
+    </div>
+
+    <!-- Speed -->
+    <div class="tune-row">
+      <label for="simSpeed">Move Speed</label>
+      <input type="range" id="simSpeed" min="0.2" max="4.0" step="0.1" value="1.0">
+      <span class="val" id="valSimSpeed">1.0x</span>
+    </div>
+
+    <!-- Dimensions -->
+    <div class="sim-control-group">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="sim-control-title">Dimensions & Radius</span>
+        <button class="slab-pill" id="btnSimSet10cm" style="padding: 0.15rem 0.5rem; font-size: 0.68rem;">10*10*10*10 Slab</button>
+      </div>
+
+      <div class="tune-row">
+        <label for="simWidth">Width</label>
+        <input type="range" id="simWidth" min="140" max="460" step="1" value="280">
+        <span class="val" id="valSimWidth">280px</span>
+      </div>
+
+      <div class="tune-row">
+        <label for="simHeight">Height</label>
+        <input type="range" id="simHeight" min="100" max="400" step="1" value="180">
+        <span class="val" id="valSimHeight">180px</span>
+      </div>
+
+      <div class="tune-row">
+        <label for="simRadius">Corner Radius</label>
+        <input type="range" id="simRadius" min="0" max="48" step="1" value="18">
+        <span class="val" id="valSimRadius">18px</span>
+      </div>
+    </div>
+
+    <!-- Optics -->
+    <div class="sim-control-group">
+      <span class="sim-control-title">Optics & Glass Tint</span>
+
+      <div class="tune-row">
+        <label for="simRefract">Refraction</label>
+        <input type="range" id="simRefract" min="0" max="60" step="1" value="40">
+        <span class="val" id="valSimRefract">40</span>
+      </div>
+
+      <div class="tune-row">
+        <label for="simBezel">Bezel Width</label>
+        <input type="range" id="simBezel" min="8" max="48" step="1" value="31">
+        <span class="val" id="valSimBezel">31px</span>
+      </div>
+
+      <div class="tune-row">
+        <label for="simBlur">Lens Blur</label>
+        <input type="range" id="simBlur" min="0" max="25" step="1" value="5">
+        <span class="val" id="valSimBlur">5px</span>
+      </div>
+
+      <div class="tune-row">
+        <label for="simSpecular">Specular Sheen</label>
+        <input type="range" id="simSpecular" min="0" max="1" step="0.05" value="1">
+        <span class="val" id="valSimSpecular">1.0</span>
+      </div>
+
+      <!-- Color Tint Selector -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.2rem;">
+        <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary);">Tint Color</label>
+        <div class="sim-tint-row">
+          <div class="sim-tint-chip active" data-tint="rgba(255,255,255,0.08)" style="background: rgba(255,255,255,0.25);" title="Crystal Clear"></div>
+          <div class="sim-tint-chip" data-tint="rgba(56,189,248,0.22)" style="background: #38bdf8;" title="Cyan Ice"></div>
+          <div class="sim-tint-chip" data-tint="rgba(251,146,60,0.22)" style="background: #fb923c;" title="Sunset Amber"></div>
+          <div class="sim-tint-chip" data-tint="rgba(52,211,153,0.22)" style="background: #34d399;" title="Emerald Wave"></div>
+          <div class="sim-tint-chip" data-tint="rgba(192,132,252,0.25)" style="background: #c084fc;" title="Neon Violet"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Presets -->
+    <div class="sim-control-group">
+      <span class="sim-control-title">Material Presets</span>
+      <div class="sim-preset-row">
+        <button class="sim-preset-btn" id="presetImg1" title="Image 1 Specs: 460x165, R48, Refract 60, Bezel 48, Blur 5">📐 Image 1 Spec</button>
+        <button class="sim-preset-btn" id="preset10cm" title="10cm Standard Rectangular Slab (378x378, R10)">🧊 10cm Slab</button>
+        <button class="sim-preset-btn" id="presetPill" title="Apple Floating Nav/Action Pill">💊 Apple Pill</button>
+        <button class="sim-preset-btn" id="presetCard" title="Liquid Glass Application Card">🎴 Glass Card</button>
+      </div>
+    </div>
+
+    <!-- Customized Code Export Section (Live Generator) -->
+    <div class="sim-control-group sim-code-group">
+      <div class="sim-code-header">
+        <span class="sim-control-title" style="color: #38bdf8;">Customized Code</span>
+        <button class="sim-copy-btn" id="btnCopySimCode" title="Copy Customized Code">
+          <span id="copySimIcon">📋</span>
+          <span id="copySimText">Copy Code</span>
+        </button>
+      </div>
+
+      <!-- Format Tabs -->
+      <div class="sim-code-tabs">
+        <button class="sim-code-tab active" data-tab="css">CSS</button>
+        <button class="sim-code-tab" data-tab="html">HTML</button>
+        <button class="sim-code-tab" data-tab="react">React</button>
+        <button class="sim-code-tab" data-tab="tokens">Tokens</button>
+      </div>
+
+      <!-- Live Code Box -->
+      <div class="sim-code-box-wrapper">
+        <pre class="sim-code-pre"><code id="simCodeOutput">/* Generating liquid glass code... */</code></pre>
+      </div>
+
+      <button class="sim-open-modal-btn" id="btnOpenCodeModal" title="Open Fullscreen Code Playground">
+        <span>⚡ Open Fullscreen Code & Playground</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============================================================
+       COMPONENT 9: LIQUID GLASS CUSTOMIZED CODE & PLAYGROUND MODAL
+       ============================================================ -->
+  <div class="glass-code-modal" id="glassCodeModal" role="dialog" aria-modal="true" aria-label="Liquid Glass Customized Code Modal">
+    <div class="glass-code-dialog">
+      <div class="glass-code-dialog-header">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <div style="width: 28px; height: 28px; border-radius: 8px; background: #007AFF; display: grid; place-items: center; font-size: 0.85rem; font-weight: 800; color: #fff;">
+            &lt;/&gt;
+          </div>
+          <div>
+            <h3 style="font-size: 0.95rem; font-weight: 800; color: #fff; margin: 0;">Customized Liquid Glass Code</h3>
+            <p style="font-size: 0.72rem; color: #94a3b8; margin: 0;">Copy & paste directly into your website or React/Next.js app</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <button class="sim-copy-btn" id="btnModalCopyCode">
+            <span id="modalCopyIcon">📋</span>
+            <span id="modalCopyText">Copy Code</span>
+          </button>
+          <button style="background: none; border: none; color: #cbd5e1; cursor: pointer; font-size: 1.3rem; padding: 0 0.3rem;" id="btnCloseCodeModal" aria-label="Close Modal">✕</button>
+        </div>
+      </div>
+
+      <div class="glass-code-dialog-body">
+        <!-- Live Parameter Badges -->
+        <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding-bottom: 0.3rem; border-bottom: 1px solid rgba(255,255,255,0.08);">
+          <span class="sim-tag-pill" id="modalBadgeDims">Dims: 280×180px</span>
+          <span class="sim-tag-pill" id="modalBadgeRadius">Radius: 18px</span>
+          <span class="sim-tag-pill" id="modalBadgeRefract">Refraction: 40</span>
+          <span class="sim-tag-pill" id="modalBadgeBezel">Bezel: 31px</span>
+          <span class="sim-tag-pill" id="modalBadgeBlur">Blur: 5px</span>
+          <span class="sim-tag-pill" id="modalBadgeSpecular">Sheen: 1.0</span>
+          <span class="sim-tag-pill" id="modalBadgeTint">Tint: Crystal Clear</span>
+        </div>
+
+        <!-- Format Selector Tabs in Modal -->
+        <div class="sim-code-tabs" style="border-bottom: none;">
+          <button class="sim-code-tab active" data-modal-tab="css">Pure CSS Class</button>
+          <button class="sim-code-tab" data-modal-tab="html">Full HTML + Style</button>
+          <button class="sim-code-tab" data-modal-tab="react">React / Next.js Component</button>
+          <button class="sim-code-tab" data-modal-tab="tokens">CSS Custom Properties</button>
+        </div>
+
+        <!-- Code Block -->
+        <pre class="glass-code-dialog-pre"><code id="modalCodeOutput"></code></pre>
+
+        <!-- Implementation Quick Guide -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; padding: 0.75rem; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);">
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 800; color: #38bdf8; text-transform: uppercase;">Step 1: Paste CSS</div>
+            <div style="font-size: 0.68rem; color: #94a3b8; line-height: 1.4;">Add the generated CSS to your global stylesheet or Tailwind CSS file.</div>
+          </div>
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 800; color: #38bdf8; text-transform: uppercase;">Step 2: Add Markup</div>
+            <div style="font-size: 0.68rem; color: #94a3b8; line-height: 1.4;">Use <code>class="liquid-glass-custom"</code> on your cards, navbars, or buttons.</div>
+          </div>
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 800; color: #38bdf8; text-transform: uppercase;">Step 3: Background Aware</div>
+            <div style="font-size: 0.68rem; color: #94a3b8; line-height: 1.4;">Place colorful imagery or gradients behind the glass for vivid refraction.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       CANVAS 2D DISPLACEMENT MAP GENERATOR & JAVASCRIPT LOGIC
+       ============================================================ -->
+  <script>
+
+    /* ============================================================
+       1. ANALYTICAL SQUIRCLE SNELL'S LAW DISPLACEMENT GENERATOR
+       ============================================================ */
+    class LiquidGlassEngine {
+      constructor() {
+        this.cache = new Map();
+        this.canvas = document.createElement("canvas");
+        this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
+        this.refractScale = 40; // Tuned to user options (40)
+        this.bezelWidth = 31;   // Tuned to user options (31px)
+        this.feLensMap = document.getElementById("fe-lens-map");
+        this.feSlabLensMap = document.getElementById("fe-slab-lens-map");
+        this.isFallback = !("backdropFilter" in document.documentElement.style || "-webkit-BackdropFilter" in document.documentElement.style);
+        
+        // Check if SVG backdrop filter is supported (Chromium)
+        this.supportsSvgFilter = !navigator.userAgent.includes("Firefox") && !/^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      }
+
+      // Signed distance function to a rounded rectangle boundary
+      getSdf(x, y, halfW, halfH, r) {
+        const ax = Math.abs(x);
+        const ay = Math.abs(y);
+        const qx = ax - (halfW - r);
+        const qy = ay - (halfH - r);
+
+        if (r > 0 && qx > 0 && qy > 0) {
+          // In corner arc
+          const d = Math.hypot(qx, qy);
+          return {
+            dist: r - d,
+            nx: - (qx / d) * Math.sign(x),
+            ny: - (qy / d) * Math.sign(y)
+          };
+        } else if (qx > qy) {
+          // Closer to vertical side
+          return {
+            dist: halfW - ax,
+            nx: -Math.sign(x),
+            ny: 0
+          };
+        } else {
+          // Closer to horizontal side
+          return {
+            dist: halfH - ay,
+            nx: 0,
+            ny: -Math.sign(y)
+          };
+        }
+      }
+
+      // Generate 2D Red/Green displacement normal map
+      generateMap(width, height, radius, bezel) {
+        const key = `${Math.round(width)}_${Math.round(height)}_${radius}_${bezel}_${this.refractScale}`;
+        if (this.cache.has(key)) return this.cache.get(key);
+
+        // Cap canvas resolution for 60fps performance budget (up to 400 for crisp 10cm slab)
+        const w = Math.min(Math.round(width), 400);
+        const h = Math.min(Math.round(height), 400);
+        this.canvas.width = w;
+        this.canvas.height = h;
+
+        const imgData = this.ctx.createImageData(w, h);
+        const data = imgData.data;
+        const halfW = w / 2;
+        const halfH = h / 2;
+        const r = Math.min(radius * (w / width), halfW, halfH);
+        const b = Math.min(bezel, halfW, halfH);
+
+        for (let y = 0; y < h; y++) {
+          const cy = y - halfH;
+          for (let x = 0; x < w; x++) {
+            const cx = x - halfW;
+            const { dist, nx, ny } = this.getSdf(cx, cy, halfW, halfH, r);
+
+            let rVal = 128;
+            let gVal = 128;
+
+            if (dist >= 0 && dist < b) {
+              // Inside curved bezel: compute convex squircle height derivative
+              const u = Math.max(0, Math.min(1, 1 - dist / b));
+              // h(u) = (1 - u^4)^(1/4)
+              // slope = u^3 / [w * (1 - u^4)^(3/4)]
+              const u4 = Math.pow(u, 4);
+              const denom = Math.max(0.08, Math.pow(1 - u4, 0.75));
+              const slope = (Math.pow(u, 3) / denom);
+              const clampedSlope = Math.min(2.8, slope);
+
+              const power = (this.refractScale / 20) * 45;
+              const dx = nx * clampedSlope * power;
+              const dy = ny * clampedSlope * power;
+
+              rVal = Math.round(Math.max(0, Math.min(255, 128 + dx)));
+              gVal = Math.round(Math.max(0, Math.min(255, 128 + dy)));
+            }
+
+            const idx = (y * w + x) * 4;
+            data[idx] = rVal;     // Red: X displacement
+            data[idx + 1] = gVal; // Green: Y displacement
+            data[idx + 2] = 255;  // Blue: neutral
+            data[idx + 3] = 255;  // Alpha: opaque
+          }
+        }
+
+        this.ctx.putImageData(imgData, 0, 0);
+        const dataUrl = this.canvas.toDataURL("image/png");
+        this.cache.set(key, dataUrl);
+        return dataUrl;
+      }
+
+      applyToElement(el, radius = 24, targetFeId = "fe-lens-map") {
+        if (!this.supportsSvgFilter) return;
+
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 10 || rect.height < 10) return;
+
+        const mapData = this.generateMap(rect.width, rect.height, radius, this.bezelWidth);
+        const targetFe = document.getElementById(targetFeId);
+        if (targetFe) {
+          targetFe.setAttribute("href", mapData);
+        }
+        if (targetFeId === "fe-slab-lens-map") {
+          el.style.setProperty("--glass-lens-filter", "url(#lg-slab-filter)");
+        } else if (targetFeId === "fe-sim-lens-map") {
+          el.style.setProperty("--glass-lens-filter", "url(#lg-sim-filter)");
+        } else {
+          el.style.setProperty("--glass-lens-filter", "url(#lg-refract-filter)");
+        }
+      }
+    }
+
+    const engine = new LiquidGlassEngine();
+    let currentSlabRadius = 10;
+    const btn = document.getElementById("btn");
+
+    // Initialize 10*10*10*10 Rectangular Liquid Glass Slab
+    if (btn) {
+      engine.applyToElement(btn, currentSlabRadius, "fe-slab-lens-map");
+
+      // Draggable Slab Physics
+      let isDragging = false;
+      let startX = 0, startY = 0;
+      let currentX = 0, currentY = 0;
+
+      btn.addEventListener("pointerdown", (e) => {
+        // Prevent default drag and scrolling
+        if (e.button !== 0) return;
+        isDragging = true;
+        startX = e.clientX - currentX;
+        startY = e.clientY - currentY;
+        try { btn.setPointerCapture(e.pointerId); } catch(err) {}
+        btn.style.cursor = "grabbing";
+        btn.style.transition = "none";
+      });
+
+      window.addEventListener("pointermove", (e) => {
+        if (!isDragging) return;
+        currentX = e.clientX - startX;
+        currentY = e.clientY - startY;
+        btn.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+      });
+
+      const endSlabDrag = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        try { btn.releasePointerCapture(e.pointerId); } catch(err) {}
+        btn.style.cursor = "grab";
+        btn.style.transition = "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), border-radius 0.25s ease, box-shadow 0.25s ease";
+      };
+
+      window.addEventListener("pointerup", endSlabDrag);
+      window.addEventListener("pointercancel", endSlabDrag);
+
+      // Reset Position
+      document.getElementById("btnResetSlab")?.addEventListener("click", () => {
+        currentX = 0;
+        currentY = 0;
+        btn.style.transform = `translate3d(0px, 0px, 0)`;
+      });
+
+      // Preset Shape Geometry Switchers
+      const presetButtons = [
+        { id: "btnRadius10", r: 10 },
+        { id: "btnRadius28", r: 28 },
+        { id: "btnRadius0", r: 0 }
+      ];
+
+      presetButtons.forEach(({ id, r }) => {
+        const pBtn = document.getElementById(id);
+        if (!pBtn) return;
+        pBtn.addEventListener("click", () => {
+          presetButtons.forEach(b => document.getElementById(b.id)?.classList.remove("active"));
+          pBtn.classList.add("active");
+          currentSlabRadius = r;
+          btn.style.borderRadius = `${r}px`;
+          engine.cache.clear();
+          engine.applyToElement(btn, currentSlabRadius, "fe-slab-lens-map");
+        });
+      });
+    }
+
+    // Attach Lens Displacement on interactive elements
+    const interactiveGlasses = document.querySelectorAll(".liquid-glass");
+    interactiveGlasses.forEach(el => {
+      if (el !== btn) {
+        engine.applyToElement(el, 24, "fe-lens-map");
+      }
+
+      // Pointer-tracked specular highlight (--mx, --my) with rAF throttle
+      let rafPending = false;
+      el.addEventListener("pointermove", (e) => {
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(() => {
+          const rect = el.getBoundingClientRect();
+          el.style.setProperty("--mx", `${e.clientX - rect.left}px`);
+          el.style.setProperty("--my", `${e.clientY - rect.top}px`);
+          rafPending = false;
+        });
+      });
+    });
+
+    /* ============================================================
+       2. MINIMIZING TAB BAR ON SCROLL DOWN / EXPAND ON SCROLL UP
+       ============================================================ */
+    const tabBarContainer = document.getElementById("tabBarContainer");
+    let lastScrollY = window.scrollY;
+
+    window.addEventListener("scroll", () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > 120 && currentScrollY > lastScrollY) {
+        tabBarContainer.classList.add("minimized");
+      } else {
+        tabBarContainer.classList.remove("minimized");
+      }
+      lastScrollY = currentScrollY;
+    }, { passive: true });
+
+    /* ============================================================
+       3. FLIP MORPHING 4TH BUTTON
+       ============================================================ */
+    const btnToggleMorph = document.getElementById("btnToggleMorph");
+    const morphedBtn = document.getElementById("morphedBtn");
+    let isMorphedVisible = true;
+
+    btnToggleMorph.addEventListener("click", () => {
+      isMorphedVisible = !isMorphedVisible;
+      if (isMorphedVisible) {
+        morphedBtn.classList.remove("collapsed");
+        btnToggleMorph.querySelector(".tab-text").textContent = "Morph -";
+      } else {
+        morphedBtn.classList.add("collapsed");
+        btnToggleMorph.querySelector(".tab-text").textContent = "Morph +";
+      }
+    });
+
+    /* ============================================================
+       4. LIQUID GLASS SLIDER INTERACTION
+       ============================================================ */
+    const sliderTrackWrap = document.getElementById("sliderTrackWrap");
+    const sliderThumb = document.getElementById("sliderThumb");
+    const sliderFill = document.getElementById("sliderFill");
+    const sliderValueText = document.getElementById("sliderValueText");
+    let isSliderDragging = false;
+
+    function updateSlider(clientX) {
+      const rect = sliderTrackWrap.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+      sliderThumb.style.left = `${pct}%`;
+      sliderFill.style.width = `${pct}%`;
+      sliderValueText.textContent = `${Math.round(pct)}%`;
+    }
+
+    sliderThumb.addEventListener("pointerdown", (e) => {
+      isSliderDragging = true;
+      sliderThumb.classList.add("dragging");
+      sliderThumb.setPointerCapture(e.pointerId);
+    });
+
+    window.addEventListener("pointermove", (e) => {
+      if (!isSliderDragging) return;
+      updateSlider(e.clientX);
+    });
+
+    window.addEventListener("pointerup", (e) => {
+      if (!isSliderDragging) return;
+      isSliderDragging = false;
+      sliderThumb.classList.remove("dragging");
+    });
+
+    sliderTrackWrap.addEventListener("click", (e) => {
+      updateSlider(e.clientX);
+    });
+    /* ============================================================
+       6. ADAPTIVE TONE CONTRAST (INTERSECTION OBSERVER)
+       ============================================================ */
+    const stageSections = document.querySelectorAll(".stage-section");
+    const toneObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const tone = entry.target.getAttribute("data-tone") || "dark";
+          document.body.setAttribute("data-active-tone", tone);
+        }
+      });
+    }, { threshold: 0.35 });
+
+    stageSections.forEach(sec => toneObserver.observe(sec));
+
+    function updateFilterDisplacementScales() {
+      const refract = 40;
+      const dispersion = 4;
+      const baseScale = (refract / 40) * 0.08;
+      const dispDelta = (dispersion / 4) * 0.008;
+
+      const ids = [
+        { r: "feDispR", g: "feDispG", b: "feDispB" },
+        { r: "feSlabDispR", g: "feSlabDispG", b: "feSlabDispB" },
+      ];
+
+      ids.forEach(({ r, g, b }) => {
+        const elR = document.getElementById(r);
+        const elG = document.getElementById(g);
+        const elB = document.getElementById(b);
+        if (elR) elR.setAttribute("scale", (baseScale + dispDelta).toFixed(4));
+        if (elG) elG.setAttribute("scale", baseScale.toFixed(4));
+        if (elB) elB.setAttribute("scale", Math.max(0, baseScale - dispDelta).toFixed(4));
+      });
+    }
+
+    function syncSlabReadouts() {
+      const rRefract = document.getElementById("readoutRefract");
+      const rBezel = document.getElementById("readoutBezel");
+      const rBlur = document.getElementById("readoutBlur");
+      const rSat = document.getElementById("readoutSat");
+      const rSpec = document.getElementById("readoutSpec");
+      const rDisp = document.getElementById("readoutDisp");
+
+      if (rRefract) rRefract.textContent = "40";
+      if (rBezel) rBezel.textContent = "31px";
+      if (rBlur) rBlur.textContent = "5px";
+      if (rSat) rSat.textContent = "100%";
+      if (rSpec) rSpec.textContent = "1.0";
+      if (rDisp) rDisp.textContent = "4px";
+    }
+
+    // ResizeObserver on Window to keep maps crisp
+    window.addEventListener("resize", () => {
+      engine.cache.clear();
+      interactiveGlasses.forEach(el => {
+        if (el === btn) {
+          engine.applyToElement(btn, currentSlabRadius, "fe-slab-lens-map");
+        } else {
+          engine.applyToElement(el, 24, "fe-lens-map");
+        }
+      });
+    });
+
+    // Top nav quick scroll to 10cm slab
+    document.getElementById("nav10cm")?.addEventListener("click", () => {
+      btn?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    // Initial sync
+    updateFilterDisplacementScales();
+    syncSlabReadouts();
+
+    /* ============================================================
+       8. SEPARATE ROAMING RECTANGULAR SIMULATION SHAPE ENGINE
+       ============================================================ */
+    const simRect = document.getElementById("simRect");
+    const simDot = document.getElementById("simDot");
+    const simStatus = document.getElementById("simStatus");
+    const simTelemetry = document.getElementById("simTelemetry");
+    const simDimsBadge = document.getElementById("simDimsBadge");
+    const simRadiusBadge = document.getElementById("simRadiusBadge");
+    const btnSimPlayPause = document.getElementById("btnSimPlayPause");
+    const btnSimCenter = document.getElementById("btnSimCenter");
+    const btnSimOpenSettings = document.getElementById("btnSimOpenSettings");
+    const btnSimTunerToggle = document.getElementById("btnSimTunerToggle");
+    const btnCloseSimTuner = document.getElementById("btnCloseSimTuner");
+    const simCustomizerPanel = document.getElementById("simCustomizerPanel");
+
+    let simX = 140;
+    let simY = 180;
+    let simVx = 2.4;
+    let simVy = 1.8;
+    let simWidth = 280;
+    let simHeight = 180;
+    let simRadius = 18;
+    let simSpeed = 1.0;
+    let simMode = "bounce"; // "bounce" | "orbit" | "follow" | "static"
+    let isSimPlaying = true;
+    let isSimDragging = false;
+    let orbitAngle = 0;
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+
+    // Initialize normal map for simulation shape
+    if (simRect) {
+      engine.applyToElement(simRect, simRadius, "fe-sim-lens-map");
+    }
+
+    // Pointer position tracker for mouse-follow mode and specular light
+    window.addEventListener("pointermove", (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    }, { passive: true });
+
+    simRect?.addEventListener("pointermove", (e) => {
+      const rect = simRect.getBoundingClientRect();
+      simRect.style.setProperty("--sim-mx", `${e.clientX - rect.left}px`);
+      simRect.style.setProperty("--sim-my", `${e.clientY - rect.top}px`);
+    });
+
+    // Autonomous Motion Loop
+    function simAnimationLoop() {
+      if (simRect && isSimPlaying && !isSimDragging) {
+        const winW = window.innerWidth;
+        const winH = window.innerHeight;
+        const maxW = Math.max(10, winW - simWidth - 10);
+        const maxH = Math.max(80, winH - simHeight - 12);
+
+        if (simMode === "bounce") {
+          simX += simVx * simSpeed;
+          simY += simVy * simSpeed;
+
+          // Horizontal bounds collision
+          if (simX <= 10) {
+            simX = 10;
+            simVx = Math.abs(simVx);
+          } else if (simX >= maxW) {
+            simX = maxW;
+            simVx = -Math.abs(simVx);
+          }
+
+          // Vertical bounds collision (keep clear of top nav 72px)
+          if (simY <= 72) {
+            simY = 72;
+            simVy = Math.abs(simVy);
+          } else if (simY >= maxH) {
+            simY = maxH;
+            simVy = -Math.abs(simVy);
+          }
+        } else if (simMode === "orbit") {
+          orbitAngle += 0.018 * simSpeed;
+          const cx = Math.max(10, (winW - simWidth) / 2);
+          const cy = Math.max(80, (winH - simHeight) / 2 + 30);
+          const rx = Math.max(40, (winW - simWidth) * 0.35);
+          const ry = Math.max(30, (winH - simHeight) * 0.28);
+          simX = cx + rx * Math.sin(orbitAngle);
+          simY = cy + ry * Math.sin(orbitAngle * 2) * 0.55;
+        } else if (simMode === "follow") {
+          const targetX = Math.max(10, Math.min(maxW, mouseX - simWidth / 2));
+          const targetY = Math.max(72, Math.min(maxH, mouseY - simHeight / 2));
+          simX += (targetX - simX) * 0.065 * simSpeed;
+          simY += (targetY - simY) * 0.065 * simSpeed;
+        }
+
+        simRect.style.transform = `translate3d(${simX.toFixed(1)}px, ${simY.toFixed(1)}px, 0)`;
+        if (simTelemetry) {
+          simTelemetry.textContent = `X: ${Math.round(simX)} · Y: ${Math.round(simY)} · ${simSpeed.toFixed(1)}x`;
+        }
+      }
+
+      requestAnimationFrame(simAnimationLoop);
+    }
+    requestAnimationFrame(simAnimationLoop);
+
+    // Draggable & Throwing Physics on simRect
+    let dragStartX = 0, dragStartY = 0;
+    let lastDragX = 0, lastDragY = 0;
+    let lastDragTime = 0;
+
+    simRect?.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button") || e.button !== 0) return;
+      isSimDragging = true;
+      dragStartX = e.clientX - simX;
+      dragStartY = e.clientY - simY;
+      lastDragX = e.clientX;
+      lastDragY = e.clientY;
+      lastDragTime = performance.now();
+      try { simRect.setPointerCapture(e.pointerId); } catch(err) {}
+      simRect.style.cursor = "grabbing";
+      if (simStatus) simStatus.textContent = "DRAGGING";
+    });
+
+    window.addEventListener("pointermove", (e) => {
+      if (!isSimDragging) return;
+      const now = performance.now();
+      const dt = Math.max(1, now - lastDragTime);
+      simVx = ((e.clientX - lastDragX) / dt) * 16;
+      simVy = ((e.clientY - lastDragY) / dt) * 16;
+      lastDragX = e.clientX;
+      lastDragY = e.clientY;
+      lastDragTime = now;
+
+      simX = e.clientX - dragStartX;
+      simY = e.clientY - dragStartY;
+      simRect.style.transform = `translate3d(${simX.toFixed(1)}px, ${simY.toFixed(1)}px, 0)`;
+      if (simTelemetry) {
+        simTelemetry.textContent = `X: ${Math.round(simX)} · Y: ${Math.round(simY)} · ${simSpeed.toFixed(1)}x`;
+      }
+    });
+
+    const endSimDrag = (e) => {
+      if (!isSimDragging) return;
+      isSimDragging = false;
+      try { simRect.releasePointerCapture(e.pointerId); } catch(err) {}
+      simRect.style.cursor = "grab";
+      // Clamp velocity to reasonable bounds
+      simVx = Math.max(-8, Math.min(8, simVx || 2.4));
+      simVy = Math.max(-8, Math.min(8, simVy || 1.8));
+      if (Math.abs(simVx) < 0.8) simVx = simVx >= 0 ? 2.0 : -2.0;
+      if (Math.abs(simVy) < 0.8) simVy = simVy >= 0 ? 1.6 : -1.6;
+      if (simStatus) {
+        simStatus.textContent = isSimPlaying ? (simMode === "bounce" ? "BOUNCING" : simMode.toUpperCase()) : "PAUSED";
+      }
+    };
+
+    window.addEventListener("pointerup", endSimDrag);
+    window.addEventListener("pointercancel", endSimDrag);
+
+    // Play / Pause Toggle
+    function toggleSimPlay() {
+      isSimPlaying = !isSimPlaying;
+      if (btnSimPlayPause) btnSimPlayPause.textContent = isSimPlaying ? "⏸" : "▶";
+      if (simDot) simDot.classList.toggle("paused", !isSimPlaying);
+      if (simStatus) {
+        simStatus.textContent = isSimPlaying ? (simMode === "bounce" ? "BOUNCING" : simMode.toUpperCase()) : "PAUSED";
+      }
+    }
+
+    btnSimPlayPause?.addEventListener("click", toggleSimPlay);
+
+    // Center Viewport
+    function centerSimRect() {
+      simX = Math.max(10, (window.innerWidth - simWidth) / 2);
+      simY = Math.max(80, (window.innerHeight - simHeight) / 2);
+      simRect.style.transform = `translate3d(${simX.toFixed(1)}px, ${simY.toFixed(1)}px, 0)`;
+      simVx = 2.4;
+      simVy = 1.8;
+    }
+
+    btnSimCenter?.addEventListener("click", centerSimRect);
+
+    // Toggle Customizer Panel
+    function toggleSimCustomizer(open) {
+      if (typeof open === "boolean") {
+        simCustomizerPanel?.classList.toggle("collapsed", !open);
+      } else {
+        simCustomizerPanel?.classList.toggle("collapsed");
+      }
+    }
+
+    btnSimOpenSettings?.addEventListener("click", () => toggleSimCustomizer(true));
+    btnSimTunerToggle?.addEventListener("click", () => toggleSimCustomizer());
+    btnCloseSimTuner?.addEventListener("click", () => toggleSimCustomizer(false));
+
+    // Nav Item Click Focus
+    document.getElementById("navSim")?.addEventListener("click", () => {
+      centerSimRect();
+      toggleSimCustomizer(true);
+      simRect?.animate([
+        { boxShadow: "0 0 0 0 rgba(0, 122, 255, 0.9)" },
+        { boxShadow: "0 0 0 20px rgba(0, 122, 255, 0)" }
+      ], { duration: 600, easing: "ease-out" });
+    });
+
+
+
+    // Motion Mode Switcher
+    const simModeBtns = document.querySelectorAll(".sim-mode-btn");
+    simModeBtns.forEach(b => {
+      b.addEventListener("click", () => {
+        simModeBtns.forEach(btn => btn.classList.remove("active"));
+        b.classList.add("active");
+        simMode = b.dataset.mode || "bounce";
+        if (simStatus && isSimPlaying) {
+          simStatus.textContent = simMode === "bounce" ? "BOUNCING" : simMode.toUpperCase();
+        }
+      });
+    });
+
+    // Speed Slider
+    const simSpeedInput = document.getElementById("simSpeed");
+    const valSimSpeed = document.getElementById("valSimSpeed");
+    simSpeedInput?.addEventListener("input", (e) => {
+      simSpeed = parseFloat(e.target.value);
+      if (valSimSpeed) valSimSpeed.textContent = `${simSpeed.toFixed(1)}x`;
+    });
+
+    // Dimensions Sliders (Width & Height)
+    const simWidthInput = document.getElementById("simWidth");
+    const valSimWidth = document.getElementById("valSimWidth");
+    const simHeightInput = document.getElementById("simHeight");
+    const valSimHeight = document.getElementById("valSimHeight");
+    const simRadiusInput = document.getElementById("simRadius");
+    const valSimRadius = document.getElementById("valSimRadius");
+
+    function updateSimDimensions() {
+      simWidth = parseInt(simWidthInput.value, 10);
+      simHeight = parseInt(simHeightInput.value, 10);
+      simRadius = parseInt(simRadiusInput.value, 10);
+
+      if (valSimWidth) valSimWidth.textContent = `${simWidth}px`;
+      if (valSimHeight) valSimHeight.textContent = `${simHeight}px`;
+      if (valSimRadius) valSimRadius.textContent = `${simRadius}px`;
+      if (simDimsBadge) simDimsBadge.textContent = `${simWidth} × ${simHeight} px`;
+      if (simRadiusBadge) simRadiusBadge.textContent = `Radius: ${simRadius}px`;
+
+      if (simRect) {
+        simRect.style.width = `${simWidth}px`;
+        simRect.style.height = `${simHeight}px`;
+        simRect.style.borderRadius = `${simRadius}px`;
+        engine.cache.clear();
+        engine.applyToElement(simRect, simRadius, "fe-sim-lens-map");
+      }
+    }
+
+    simWidthInput?.addEventListener("input", updateSimDimensions);
+    simHeightInput?.addEventListener("input", updateSimDimensions);
+    simRadiusInput?.addEventListener("input", updateSimDimensions);
+
+    // Quick 10*10*10*10 Slab Button in Sim Customizer
+    document.getElementById("btnSimSet10cm")?.addEventListener("click", () => {
+      if (simWidthInput) simWidthInput.value = "378";
+      if (simHeightInput) simHeightInput.value = "378";
+      if (simRadiusInput) simRadiusInput.value = "10";
+      updateSimDimensions();
+    });
+
+    // Sim Optics Sliders
+    const simRefractInput = document.getElementById("simRefract");
+    const valSimRefract = document.getElementById("valSimRefract");
+    const simBezelInput = document.getElementById("simBezel");
+    const valSimBezel = document.getElementById("valSimBezel");
+    const simBlurInput = document.getElementById("simBlur");
+    const valSimBlur = document.getElementById("valSimBlur");
+    const simSpecularInput = document.getElementById("simSpecular");
+    const valSimSpecular = document.getElementById("valSimSpecular");
+
+    simRefractInput?.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      if (valSimRefract) valSimRefract.textContent = val;
+      const feSimDispR = document.getElementById("feSimDispR");
+      const feSimDispG = document.getElementById("feSimDispG");
+      const feSimDispB = document.getElementById("feSimDispB");
+      const baseScale = (val / 40) * 0.08;
+      if (feSimDispR) feSimDispR.setAttribute("scale", (baseScale + 0.008).toFixed(4));
+      if (feSimDispG) feSimDispG.setAttribute("scale", baseScale.toFixed(4));
+      if (feSimDispB) feSimDispB.setAttribute("scale", Math.max(0, baseScale - 0.008).toFixed(4));
+      engine.cache.clear();
+      engine.applyToElement(simRect, simRadius, "fe-sim-lens-map");
+    });
+
+    simBezelInput?.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      if (valSimBezel) valSimBezel.textContent = `${val}px`;
+      engine.bezelWidth = val;
+      engine.cache.clear();
+      engine.applyToElement(simRect, simRadius, "fe-sim-lens-map");
+    });
+
+    simBlurInput?.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      if (valSimBlur) valSimBlur.textContent = `${val}px`;
+      simRect?.style.setProperty("--sim-blur", `${val}px`);
+    });
+
+    simSpecularInput?.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      if (valSimSpecular) valSimSpecular.textContent = val.toFixed(1);
+      simRect?.style.setProperty("--sim-specular", val);
+    });
+
+    // Sim Tint Color Selection
+    const simTintChips = document.querySelectorAll(".sim-tint-chip");
+    simTintChips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        simTintChips.forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        const tint = chip.dataset.tint || "rgba(255, 255, 255, 0.08)";
+        simRect?.style.setProperty("--sim-tint", tint);
+        updateCustomizedCode();
+      });
+    });
+
+    /* ============================================================
+       9. LIVE CUSTOMIZED CODE GENERATOR & EXPORTER ENGINE
+       ============================================================ */
+    let simActiveTab = "css";
+    let modalActiveTab = "css";
+
+    const simCodeOutput = document.getElementById("simCodeOutput");
+    const modalCodeOutput = document.getElementById("modalCodeOutput");
+    const btnCopySimCode = document.getElementById("btnCopySimCode");
+    const btnModalCopyCode = document.getElementById("btnModalCopyCode");
+    const glassCodeModal = document.getElementById("glassCodeModal");
+    const btnOpenCodeModal = document.getElementById("btnOpenCodeModal");
+    const btnCloseCodeModal = document.getElementById("btnCloseCodeModal");
+    const btnSimOpenCode = document.getElementById("btnSimOpenCode");
+    const btnCopyTuningCss = document.getElementById("btnCopyTuningCss");
+
+    // Modal parameter badges
+    const modalBadgeDims = document.getElementById("modalBadgeDims");
+    const modalBadgeRadius = document.getElementById("modalBadgeRadius");
+    const modalBadgeRefract = document.getElementById("modalBadgeRefract");
+    const modalBadgeBezel = document.getElementById("modalBadgeBezel");
+    const modalBadgeBlur = document.getElementById("modalBadgeBlur");
+    const modalBadgeSpecular = document.getElementById("modalBadgeSpecular");
+    const modalBadgeTint = document.getElementById("modalBadgeTint");
+
+    function getSimState() {
+      const activeChip = document.querySelector(".sim-tint-chip.active");
+      const tintVal = activeChip?.dataset.tint || "rgba(255, 255, 255, 0.08)";
+      const tintTitle = activeChip?.title || "Crystal Clear";
+      return {
+        width: simWidth,
+        height: simHeight,
+        radius: simRadius,
+        refract: simRefractInput ? parseFloat(simRefractInput.value) : 40,
+        bezel: simBezelInput ? parseFloat(simBezelInput.value) : 31,
+        blur: simBlurInput ? parseFloat(simBlurInput.value) : 5,
+        specular: simSpecularInput ? parseFloat(simSpecularInput.value).toFixed(1) : "1.0",
+        tint: tintVal,
+        tintTitle: tintTitle,
+      };
+    }
+
+    function generateCodeString(format, s) {
+      if (format === "css") {
+        return `/* =========================================
+   LIQUID GLASS CARD
+   Refraction: ${s.refract}
+   Bezel Width: ${s.bezel}px
+   Lens Blur: ${s.blur}px
+   ========================================= */
+
+.liquid-glass-card {
+  --glass-refraction: ${s.refract};
+  --bezel-width: ${s.bezel}px;
+  --lens-blur: ${s.blur}px;
+
+  position: relative;
+  isolation: isolate;
+
+  width: 100%;
+  min-height: 180px;
+
+  border-radius: 32px;
+  overflow: hidden;
+
+  /* Glass body */
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.14),
+      rgba(255, 255, 255, 0.055)
+    );
+
+  /* Lens blur */
+  backdrop-filter:
+    blur(var(--lens-blur))
+    saturate(160%)
+    brightness(108%);
+
+  -webkit-backdrop-filter:
+    blur(var(--lens-blur))
+    saturate(160%)
+    brightness(108%);
+
+  /* Optical bezel */
+  border: 1.5px solid rgba(255, 255, 255, 0.40);
+
+  /* Depth + optical edges */
+  box-shadow:
+    0 18px 45px -10px rgba(0, 0, 0, 0.35),
+
+    /* Top optical edge */
+    inset 0 1.5px 2px
+      rgba(255, 255, 255, 0.85),
+
+    /* Bottom optical edge */
+    inset 0 -1.5px 2px
+      rgba(255, 255, 255, 0.22),
+
+    /* Internal glass diffusion */
+    inset 0 0 48px
+      rgba(255, 255, 255, 0.08);
+
+  transition:
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 260ms ease;
+}
+
+
+/* =========================================
+   REFRACTION / SPECULAR LIGHT
+   ========================================= */
+
+.liquid-glass-card::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+  z-index: -1;
+
+  border-radius: inherit;
+
+  background:
+    radial-gradient(
+      circle at 30% 0%,
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 255, 255, 0.16) 18%,
+      transparent 55%
+    );
+
+  opacity: calc(var(--glass-refraction) * 0.015);
+
+  filter: blur(0.5px);
+}
+
+
+/* =========================================
+   BEZEL / EDGE LIGHT
+   ========================================= */
+
+.liquid-glass-card::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  border-radius: inherit;
+
+  padding: 1px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.65),
+      rgba(255, 255, 255, 0.12) 35%,
+      rgba(255, 255, 255, 0.05) 65%,
+      rgba(255, 255, 255, 0.28)
+    );
+
+  /*
+    Creates an optical border instead of
+    a simple solid white border.
+  */
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+
+  opacity: 0.75;
+}
+
+
+/* =========================================
+   CONTENT
+   ========================================= */
+
+.glass-content {
+  position: relative;
+
+  padding: var(--bezel-width);
+
+  z-index: 2;
+
+  color: white;
+}
+
+.glass-content h3 {
+  margin: 0 0 10px;
+
+  font-size: 22px;
+  font-weight: 600;
+
+  letter-spacing: -0.02em;
+}
+
+.glass-content p {
+  margin: 0;
+
+  font-size: 14px;
+  line-height: 1.6;
+
+  color: rgba(255, 255, 255, 0.72);
+}
+
+
+/* =========================================
+   HOVER
+   ========================================= */
+
+.liquid-glass-card:hover {
+  transform: translateY(-4px);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.18),
+      rgba(255, 255, 255, 0.07)
+    );
+
+  box-shadow:
+    0 25px 55px -8px rgba(0, 0, 0, 0.42),
+
+    inset 0 2px 3px
+      rgba(255, 255, 255, 0.95),
+
+    inset 0 -1.5px 3px
+      rgba(255, 255, 255, 0.28),
+
+    inset 0 0 55px
+      rgba(255, 255, 255, 0.12);
+}
+
+
+/* =========================================
+   PRESS
+   ========================================= */
+
+.liquid-glass-card:active {
+  transform: scale(0.985);
+}
+
+
+/* =========================================
+   REDUCED MOTION
+   ========================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass-card {
+    transition: none;
+  }
+
+  .liquid-glass-card:hover {
+    transform: none;
+  }
+}`;
+      } else if (format === "html") {
+        return `<!-- Plug & Play Liquid Glass Component (Paste directly into any HTML) -->
+<div class="liquid-glass-custom">
+  <div style="padding: 1.5rem; color: #ffffff; z-index: 2; position: relative; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <h3 style="margin: 0 0 0.5rem; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em;">Liquid Glass Surface</h3>
+    <p style="margin: 0; font-size: 0.85rem; opacity: 0.85; line-height: 1.5;">
+      Apple-inspired translucent material with optical bezel & real-time background refraction.
+    </p>
+  </div>
+</div>
+
+<style>
+.liquid-glass-custom {
+  position: relative;
+  width: ${s.width}px;
+  height: ${s.height}px;
+  border-radius: ${s.radius}px;
+  background: ${s.tint};
+  backdrop-filter: blur(${s.blur}px) saturate(160%) brightness(108%);
+  -webkit-backdrop-filter: blur(${s.blur}px) saturate(160%) brightness(108%);
+  border: 1.5px solid rgba(255, 255, 255, 0.40);
+  box-shadow:
+    0 16px 40px -8px rgba(0, 0, 0, 0.35),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.85),
+    inset 0 0 ${s.bezel}px rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+  transition: all 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.liquid-glass-custom::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 35% 0%, rgba(255, 255, 255, ${((parseFloat(s.specular) || 0) * 0.45).toFixed(2)}), transparent 70%);
+  pointer-events: none;
+}
+.liquid-glass-custom:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 48px -6px rgba(0, 0, 0, 0.45), inset 0 2px 3px rgba(255, 255, 255, 0.95);
+}
+</style>`;
+      } else if (format === "react") {
+        return `import React from "react";
+
+export interface LiquidGlassProps {
+  children?: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+}
+
+export const LiquidGlass: React.FC<LiquidGlassProps> = ({
+  children,
+  className = "",
+  onClick,
+}) => {
+  return (
+    <div
+      onClick={onClick}
+      className={\`relative overflow-hidden cursor-pointer select-none transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.985] \${className}\`}
+      style={{
+        width: "${s.width}px",
+        height: "${s.height}px",
+        borderRadius: "${s.radius}px",
+        background: "${s.tint}",
+        backdropFilter: "blur(${s.blur}px) saturate(160%) brightness(108%)",
+        WebkitBackdropFilter: "blur(${s.blur}px) saturate(160%) brightness(108%)",
+        border: "1.5px solid rgba(255, 255, 255, 0.40)",
+        boxShadow:
+          "0 16px 40px -8px rgba(0, 0, 0, 0.35), inset 0 1.5px 2px rgba(255, 255, 255, 0.85), inset 0 -1.5px 2px rgba(255, 255, 255, 0.25), inset 0 0 ${s.bezel}px rgba(255, 255, 255, 0.10)",
+      }}
+    >
+      {/* Specular Sheen Highlight */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at 35% 0%, rgba(255, 255, 255, ${((parseFloat(s.specular) || 0) * 0.45).toFixed(2)}), transparent 70%)",
+        }}
+      />
+      <div className="relative z-10 p-5 text-white">
+        {children || (
+          <div>
+            <h4 className="font-extrabold text-base">Liquid Glass</h4>
+            <p className="text-xs opacity-85 mt-1">Refraction: ${s.refract} • Bezel: ${s.bezel}px • Blur: ${s.blur}px</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default LiquidGlass;`;
+      } else {
+        // Tokens
+        return `/* Apple Liquid Glass Design Tokens (Ready for Tailwind / CSS Modules) */
+:root {
+  --glass-width: ${s.width}px;
+  --glass-height: ${s.height}px;
+  --glass-radius: ${s.radius}px;
+  --glass-refraction: ${s.refract};
+  --glass-bezel-width: ${s.bezel}px;
+  --glass-lens-blur: ${s.blur}px;
+  --glass-specular-sheen: ${s.specular};
+  --glass-tint: ${s.tint};
+
+  /* Optical Glass Rim Tokens */
+  --glass-optical-border: rgba(255, 255, 255, 0.40);
+  --glass-optical-highlight: inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.85);
+  --glass-optical-bevel-inner: inset 0 -1.5px 2px 0 rgba(255, 255, 255, 0.25);
+  --glass-optical-bezel-spread: inset 0 0 ${s.bezel}px 0 rgba(255, 255, 255, 0.10);
+  --glass-optical-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.35);
+  --glass-transition: all 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}`;
+      }
+    }
+
+    function updateCustomizedCode() {
+      const state = getSimState();
+
+      // Ensure active classes match active tab state
+      document.querySelectorAll(".sim-code-tab[data-tab]").forEach(b => {
+        b.classList.toggle("active", b.getAttribute("data-tab") === simActiveTab);
+      });
+      document.querySelectorAll(".sim-code-tab[data-modal-tab]").forEach(b => {
+        b.classList.toggle("active", b.getAttribute("data-modal-tab") === modalActiveTab);
+      });
+
+      // Update Panel Code
+      if (simCodeOutput) {
+        simCodeOutput.textContent = generateCodeString(simActiveTab, state);
+      }
+
+      // Update Modal Code & Badges
+      if (modalCodeOutput) {
+        modalCodeOutput.textContent = generateCodeString(modalActiveTab, state);
+      }
+      if (modalBadgeDims) modalBadgeDims.textContent = `Dims: ${state.width}×${state.height}px`;
+      if (modalBadgeRadius) modalBadgeRadius.textContent = `Radius: ${state.radius}px`;
+      if (modalBadgeRefract) modalBadgeRefract.textContent = `Refraction: ${state.refract}`;
+      if (modalBadgeBezel) modalBadgeBezel.textContent = `Bezel: ${state.bezel}px`;
+      if (modalBadgeBlur) modalBadgeBlur.textContent = `Blur: ${state.blur}px`;
+      if (modalBadgeSpecular) modalBadgeSpecular.textContent = `Sheen: ${state.specular}`;
+      if (modalBadgeTint) modalBadgeTint.textContent = `Tint: ${state.tintTitle}`;
+    }
+
+    // Bind tab clicks in customizer panel
+    document.querySelectorAll(".sim-code-tab[data-tab]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        simActiveTab = btn.getAttribute("data-tab") || "css";
+        updateCustomizedCode();
+      });
+    });
+
+    // Bind tab clicks in fullscreen modal
+    document.querySelectorAll(".sim-code-tab[data-modal-tab]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        modalActiveTab = btn.getAttribute("data-modal-tab") || "css";
+        updateCustomizedCode();
+      });
+    });
+
+    // Copy to clipboard helper
+    function copyTextToClipboard(text, btnElement, iconId, textId) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showCopySuccess(btnElement, iconId, textId);
+        }).catch(() => fallbackCopy(text, btnElement, iconId, textId));
+      } else {
+        fallbackCopy(text, btnElement, iconId, textId);
+      }
+    }
+
+    function fallbackCopy(text, btnElement, iconId, textId) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand("copy");
+        showCopySuccess(btnElement, iconId, textId);
+      } catch (err) {
+        alert("Please copy manually from the code box.");
+      }
+      document.body.removeChild(textarea);
+    }
+
+    function showCopySuccess(btnElement, iconId, textId) {
+      btnElement.classList.add("copied");
+      const icon = document.getElementById(iconId);
+      const txt = document.getElementById(textId);
+      const oldIcon = icon ? icon.textContent : "📋";
+      const oldTxt = txt ? txt.textContent : "Copy Code";
+      if (icon) icon.textContent = "✓";
+      if (txt) txt.textContent = "Copied!";
+
+      setTimeout(() => {
+        btnElement.classList.remove("copied");
+        if (icon) icon.textContent = oldIcon;
+        if (txt) txt.textContent = oldTxt;
+      }, 2000);
+    }
+
+    // Panel Copy Button
+    btnCopySimCode?.addEventListener("click", () => {
+      const state = getSimState();
+      const code = generateCodeString(simActiveTab, state);
+      copyTextToClipboard(code, btnCopySimCode, "copySimIcon", "copySimText");
+    });
+
+    // Modal Copy Button
+    btnModalCopyCode?.addEventListener("click", () => {
+      const state = getSimState();
+      const code = generateCodeString(modalActiveTab, state);
+      copyTextToClipboard(code, btnModalCopyCode, "modalCopyIcon", "modalCopyText");
+    });
+
+    // Preset Buttons
+    document.getElementById("presetImg1")?.addEventListener("click", () => {
+      if (simWidthInput) simWidthInput.value = "460";
+      if (simHeightInput) simHeightInput.value = "165";
+      if (simRadiusInput) simRadiusInput.value = "48";
+      if (simRefractInput) simRefractInput.value = "60";
+      if (simBezelInput) simBezelInput.value = "48";
+      if (simBlurInput) simBlurInput.value = "5";
+      if (simSpecularInput) simSpecularInput.value = "0.0";
+      
+      updateSimDimensions();
+      simRefractInput?.dispatchEvent(new Event("input"));
+      simBezelInput?.dispatchEvent(new Event("input"));
+      simBlurInput?.dispatchEvent(new Event("input"));
+      simSpecularInput?.dispatchEvent(new Event("input"));
+
+      // Set Neon Violet tint (Image 1 selected swatch)
+      const violetChip = document.querySelector(".sim-tint-chip[data-tint*='192,132,252']");
+      if (violetChip) violetChip.click();
+      updateCustomizedCode();
+    });
+
+    document.getElementById("preset10cm")?.addEventListener("click", () => {
+      if (simWidthInput) simWidthInput.value = "378";
+      if (simHeightInput) simHeightInput.value = "378";
+      if (simRadiusInput) simRadiusInput.value = "10";
+      if (simRefractInput) simRefractInput.value = "40";
+      if (simBezelInput) simBezelInput.value = "31";
+      if (simBlurInput) simBlurInput.value = "5";
+      if (simSpecularInput) simSpecularInput.value = "1.0";
+      
+      updateSimDimensions();
+      simRefractInput?.dispatchEvent(new Event("input"));
+      simBezelInput?.dispatchEvent(new Event("input"));
+      simBlurInput?.dispatchEvent(new Event("input"));
+      simSpecularInput?.dispatchEvent(new Event("input"));
+
+      const clearChip = document.querySelector(".sim-tint-chip[data-tint*='255,255,255']");
+      if (clearChip) clearChip.click();
+      updateCustomizedCode();
+    });
+
+    document.getElementById("presetPill")?.addEventListener("click", () => {
+      if (simWidthInput) simWidthInput.value = "260";
+      if (simHeightInput) simHeightInput.value = "54";
+      if (simRadiusInput) simRadiusInput.value = "27";
+      if (simRefractInput) simRefractInput.value = "40";
+      if (simBezelInput) simBezelInput.value = "24";
+      if (simBlurInput) simBlurInput.value = "14";
+      if (simSpecularInput) simSpecularInput.value = "0.8";
+      
+      updateSimDimensions();
+      simRefractInput?.dispatchEvent(new Event("input"));
+      simBezelInput?.dispatchEvent(new Event("input"));
+      simBlurInput?.dispatchEvent(new Event("input"));
+      simSpecularInput?.dispatchEvent(new Event("input"));
+
+      const cyanChip = document.querySelector(".sim-tint-chip[data-tint*='56,189,248']");
+      if (cyanChip) cyanChip.click();
+      updateCustomizedCode();
+    });
+
+    document.getElementById("presetCard")?.addEventListener("click", () => {
+      if (simWidthInput) simWidthInput.value = "340";
+      if (simHeightInput) simHeightInput.value = "220";
+      if (simRadiusInput) simRadiusInput.value = "36";
+      if (simRefractInput) simRefractInput.value = "50";
+      if (simBezelInput) simBezelInput.value = "40";
+      if (simBlurInput) simBlurInput.value = "16";
+      if (simSpecularInput) simSpecularInput.value = "0.4";
+      
+      updateSimDimensions();
+      simRefractInput?.dispatchEvent(new Event("input"));
+      simBezelInput?.dispatchEvent(new Event("input"));
+      simBlurInput?.dispatchEvent(new Event("input"));
+      simSpecularInput?.dispatchEvent(new Event("input"));
+
+      const amberChip = document.querySelector(".sim-tint-chip[data-tint*='251,146,60']");
+      if (amberChip) amberChip.click();
+      updateCustomizedCode();
+    });
+
+    // Open/Close Modal
+    function openCodeModal(format) {
+      if (format && typeof format === "string") {
+        modalActiveTab = format;
+      } else {
+        modalActiveTab = simActiveTab;
+      }
+      document.querySelectorAll(".sim-code-tab[data-modal-tab]").forEach(b => {
+        b.classList.toggle("active", b.dataset.modalTab === modalActiveTab);
+      });
+      updateCustomizedCode();
+      glassCodeModal?.classList.add("active");
+    }
+
+    function closeCodeModal() {
+      glassCodeModal?.classList.remove("active");
+    }
+
+    btnOpenCodeModal?.addEventListener("click", openCodeModal);
+    btnCloseCodeModal?.addEventListener("click", closeCodeModal);
+
+    // Roaming Shape </ > icon opens customizer & modal
+    btnSimOpenCode?.addEventListener("click", () => {
+      toggleSimCustomizer(true);
+      openCodeModal();
+    });
+
+    // Close on backdrop click
+    glassCodeModal?.addEventListener("click", (e) => {
+      if (e.target === glassCodeModal) closeCodeModal();
+    });
+
+    // Esc key closes modal
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && glassCodeModal?.classList.contains("active")) {
+        closeCodeModal();
+      }
+    });
+
+    // Hook code update into all dimension & optic sliders
+    [simWidthInput, simHeightInput, simRadiusInput, simRefractInput, simBezelInput, simBlurInput, simSpecularInput].forEach(inp => {
+      inp?.addEventListener("input", updateCustomizedCode);
+    });
+
+  </script>
+</body>
+</html>
+
+

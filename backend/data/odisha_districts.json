@@ -1,0 +1,68 @@
+[
+  {
+    "id": "OD-DIST-KEN",
+    "district_name": "Kendrapara",
+    "headquarters": "Kendrapara",
+    "coastal_length_km": 68,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Rajnagar", "Mahakalapada", "Marshaghai", "Garadpur", "Pattamundai", "Aul"],
+    "major_historical_cyclones": ["1971 Odisha Cyclone (10k casualties)", "1999 Super Cyclone (260 km/h)", "Phailin (2013)", "Yaas (2021)"],
+    "deoc_helpline": "06727-232803 / 1077",
+    "designated_shelters": 122
+  },
+  {
+    "id": "OD-DIST-JAG",
+    "district_name": "Jagatsinghpur",
+    "headquarters": "Jagatsinghpur",
+    "coastal_length_km": 48,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Erasama", "Balikuda", "Kujang", "Paradip Port Area", "Naugaon"],
+    "major_historical_cyclones": ["1999 Super Cyclone (BOB 06 Landfall)", "Phailin (2013)", "Fani (2019)"],
+    "deoc_helpline": "06722-220368 / 1077",
+    "designated_shelters": 85
+  },
+  {
+    "id": "OD-DIST-PUR",
+    "district_name": "Puri",
+    "headquarters": "Puri",
+    "coastal_length_km": 155,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Krushnaprasad", "Brahmagiri", "Puri Sadar", "Gop", "Kakatpur", "Astaranga"],
+    "major_historical_cyclones": ["Fani (2019 Landfall - 215 km/h)", "1999 Super Cyclone", "Hudhud (2014)"],
+    "deoc_helpline": "06752-223237 / 1077",
+    "designated_shelters": 148
+  },
+  {
+    "id": "OD-DIST-GNJ",
+    "district_name": "Ganjam",
+    "headquarters": "Chatrapur",
+    "coastal_length_km": 68,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Gopalpur", "Chatrapur", "Rangeilunda", "Chikiti", "Ganjam Block"],
+    "major_historical_cyclones": ["Phailin (2013 Landfall - 220 km/h)", "Titli (2018)", "Hudhud (2014)"],
+    "deoc_helpline": "06811-263700 / 1077",
+    "designated_shelters": 134
+  },
+  {
+    "id": "OD-DIST-BLS",
+    "district_name": "Balasore",
+    "headquarters": "Balasore",
+    "coastal_length_km": 80,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Bhograi", "Jaleswar", "Baliapal", "Basta", "Remuna", "Bahanaga"],
+    "major_historical_cyclones": ["Yaas (2021 Landfall)", "Amphan (2020)", "Bulbul (2019)"],
+    "deoc_helpline": "06782-262674 / 1077",
+    "designated_shelters": 98
+  },
+  {
+    "id": "OD-DIST-BHD",
+    "district_name": "Bhadrak",
+    "headquarters": "Bhadrak",
+    "coastal_length_km": 50,
+    "vulnerability_tier": "VERY_HIGH",
+    "key_coastal_mandals": ["Basudevpur", "Chandbali", "Dhamra Port Basin", "Tihidi"],
+    "major_historical_cyclones": ["Yaas (2021 Dhamra Landfall)", "Bulbul (2019)", "Amphan (2020)"],
+    "deoc_helpline": "06784-251881 / 1077",
+    "designated_shelters": 76
+  }
+]

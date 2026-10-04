@@ -23,6 +23,7 @@ function getRouteActivity(pathname: string): string {
   if (pathname === "/map") return "Monitoring Shelter & Flood Map";
   if (pathname === "/inventory") return "Checking Relief Supply Inventory";
   if (pathname.startsWith("/andhra-pradesh")) return "AP Cyclone Coastal Protocol";
+  if (pathname.startsWith("/odisha")) return "Odisha Cyclone Coastal Protocol (OSDMA)";
   if (pathname.startsWith("/admin")) return "Command Center Management";
   if (pathname === "/dashboard") return "Disaster Monitoring Dashboard";
   if (pathname === "/") return "Citizen Disaster Portal";

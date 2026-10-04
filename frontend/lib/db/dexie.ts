@@ -595,9 +595,46 @@ export const AP_SHELTERS: Shelter[] = [
 
 export const INITIAL_SHELTERS: Shelter[] = [...ODISHA_SHELTERS, ...AP_SHELTERS];
 
-export async function initializeDatabase() {
-  // Upsert all official shelters (ensures both Odisha and AP shelters exist even if previously seeded)
-  await db.shelters.bulkPut(INITIAL_SHELTERS);
+// Shelter fields that change at runtime (admissions, intake, field status reports).
+// IndexedDB owns these once a shelter exists; the seed only provides their starting values.
+const LIVE_SHELTER_FIELDS = new Set<keyof Shelter>(["current_occupancy", "status"]);
+
+let initPromise: Promise<void> | null = null;
+
+// Every page and the Header call this on mount; share one run per page load so
+// concurrent callers don't race each other's seeding. Reset on failure to allow a retry.
+export function initializeDatabase(): Promise<void> {
+  initPromise ??= db
+    .transaction("rw", [db.shelters, db.inventory, db.households, db.triage], seedDatabase)
+    .catch((err) => {
+      initPromise = null;
+      throw err;
+    });
+  return initPromise;
+}
+
+async function seedDatabase() {
+  // Add any official shelters missing from older databases (e.g. the AP shelters), and keep
+  // static metadata in sync with the code without touching live occupancy/status.
+  const existingShelters = new Map((await db.shelters.toArray()).map((s) => [s.id, s]));
+  const missingShelters = INITIAL_SHELTERS.filter((s) => !existingShelters.has(s.id));
+  if (missingShelters.length > 0) {
+    await db.shelters.bulkAdd(missingShelters);
+  }
+
+  for (const seed of INITIAL_SHELTERS) {
+    const stored = existingShelters.get(seed.id);
+    if (!stored) continue;
+    const staleFields = (Object.keys(seed) as (keyof Shelter)[]).filter(
+      (key) => !LIVE_SHELTER_FIELDS.has(key) && stored[key] !== seed[key]
+    );
+    if (staleFields.length > 0) {
+      await db.shelters.update(
+        seed.id,
+        Object.fromEntries(staleFields.map((key) => [key, seed[key]]))
+      );
+    }
+  }
 
   // Seed inventory for any shelters that don't have commodities yet
   const existingInv = await db.inventory.toArray();

@@ -17,7 +17,6 @@ import {
   AlertTriangle,
   Building,
   CheckCircle2,
-  Calendar,
   MapPin,
   TrendingDown,
   Info,
@@ -387,12 +386,12 @@ export default function CycloneHistoryPage() {
         </div>
       </div>
 
-      {/* Detailed Cyclone Modal */}
+      {/* Detailed Cyclone Modal (Liquid Glass Surface) */}
       {selectedCyclone && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="lg-base lg-surface w-full max-w-3xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-850">
+            <div className="p-5 border-b border-white/10 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -408,7 +407,7 @@ export default function CycloneHistoryPage() {
               </div>
               <button
                 onClick={() => setSelectedCyclone(null)}
-                className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                className="p-1.5 rounded-full lg-inner-item text-slate-300 hover:text-white transition"
               >
                 <X className="w-5 h-5" />
               </button>
